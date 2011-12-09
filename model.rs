@@ -236,7 +236,7 @@ fn read_mesh(fname: str) -> mesh {
 
 	ret {	vertices: vertices, 
 		indices: indices, 
-		normals: vec::map( {|v| normalized(v)}, vert_normals) };
+		normals: vec::map_mut( {|v| normalized(v)}, vert_normals) };
 }
 
 
