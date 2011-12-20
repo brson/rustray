@@ -1,5 +1,3 @@
-import std::{result,io};
-
 const WIDTH : uint = 512u;
 const HEIGHT : uint = 512u;
 const FOV : float = 3.14159f / 3f ;
