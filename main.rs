@@ -1,4 +1,5 @@
-import std::{result,io};
+import std::io;
+import raytracer::*;
 
 const WIDTH : uint = 512u;
 const HEIGHT : uint = 512u;
@@ -20,15 +21,15 @@ fn main( _args: [str] )
 	let model = model::read_model( "models/cow-nonormals.obj" );
 	let {depth,count} = model::count_kd_tree_nodes( model.kd_tree );
 
-	std::io::println(#fmt("Done.\nLoaded model.\n\tVerts: %u, Tris: %u\n\tKD-tree depth: %u, #nodes: %u", 
+	io::println(#fmt("Done.\nLoaded model.\n\tVerts: %u, Tris: %u\n\tKD-tree depth: %u, #nodes: %u", 
 				vec::len(model.mesh.vertices), 
 				vec::len(model.mesh.indices)/3u,
 				depth, count));
 
-	std::io::print("Tracing rays... ");
+	io::print("Tracing rays... ");
 	let pixels = raytracer::generate_raytraced_image(model, FOV, WIDTH, HEIGHT);
-	std::io::println("Done!");
-	std::io::print("Writing file... ");
+	io::println("Done!");
+	io::print("Writing file... ");
 	write_ppm( "oput.ppm", WIDTH, HEIGHT, pixels );	
-	std::io::println("Done!");
+	io::println("Done!");
 }

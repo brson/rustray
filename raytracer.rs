@@ -35,7 +35,7 @@ fn generate_test_image( width: uint, height: uint ) -> [color]{
 fn get_ray( horizontalFOV: float, width: uint, height: uint, x: uint, y: uint) -> ray{
 	let dirx = (x as float) - (width/2u as float);
 	let diry = -((y as float) - (height/2u as float));
-	let dirz = -(width/2u as float) / math::tan(horizontalFOV*0.5);
+	let dirz = -(width/2u as float) / float::tan(horizontalFOV*0.5);
 	{ origin: vec3(0.5f, 0f, 10f), 
 	  dir: normalized( vec3( dirx+0.00001f, 
 				 diry+0.00001f, 
@@ -49,7 +49,7 @@ fn get_triangle( m : model::mesh, ix : uint ) -> triangle{
 }
 
 fn clamp( x: float, lo: float, hi: float ) -> float{
-	math::min(hi, math::max( x, lo ))
+	float::min(hi, float::max( x, lo ))
 }
 
 fn abs( f:float )->float{
@@ -237,7 +237,7 @@ fn trace_ray( r : ray, model : model::model, mint: float, maxt: float) -> option
 				trace_kd_tree( model.mesh, model.kd_tree, r, mint, new_maxt ) :
 				trace_soup( model.mesh, r);
 
-	option::may( { |hit|
+	option::may( trace_result, { |hit|
 		let (hit_info, tri_ix) = hit;
 	
 	
@@ -263,7 +263,7 @@ fn trace_ray( r : ray, model : model::model, mint: float, maxt: float) -> option
 
 		}
 
-	}, trace_result ); 
+	}); 
 
 
 	ret result;

@@ -1,4 +1,5 @@
-
+import std::{sort, io};
+import math3d::*;
 
 type mesh = { vertices: [vec3], indices: [uint], normals: [vec3] };
 
@@ -26,8 +27,8 @@ fn split_triangles( splitter: float, distances: [float], indices: [uint], faces:
 		let d1 = distances[indices[f*3u+1u]];
 		let d2 = distances[indices[f*3u+2u]];
 
-		let maxdist = math::max(d0, math::max(d1, d2));
-		let mindist = math::min(d0, math::min(d1, d2));
+		let maxdist = float::max(d0, float::max(d1, d2));
+		let mindist = float::min(d0, float::min(d1, d2));
 
 		if mindist <= splitter {
 			l += [f];
@@ -134,7 +135,7 @@ fn count_kd_tree_nodes( t: kd_tree ) -> {depth:uint, count:uint} {
 		node(_,_,l,r) {
 			let {depth:d0,count:c0} = count_kd_tree_nodes( *l );
 			let {depth:d1,count:c1} = count_kd_tree_nodes( *r );
-			ret {depth: math::max(d0, d1)+1u, count: c0+c1+1u };		
+			ret {depth: float::max(d0, d1)+1u, count: c0+c1+1u };		
 		}
 		leaf {
 			ret { depth:1u, count:1u };
@@ -236,7 +237,7 @@ fn read_mesh(fname: str) -> mesh {
 
 	ret {	vertices: vertices, 
 		indices: indices, 
-		normals: vec::map_mut( {|v| normalized(v)}, vert_normals) };
+		normals: vec::map_mut( vert_normals, {|v| normalized(v)}) };
 }
 
 

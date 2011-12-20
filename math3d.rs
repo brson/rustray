@@ -1,5 +1,3 @@
-import std::{option,math};
-
 type vec3 = { x:float, y:float, z:float};
 
 fn vec3(x:float, y:float, z:float) -> vec3{
@@ -23,7 +21,7 @@ fn length_sq(v:vec3) -> float {
 }
 
 fn length(v:vec3) -> float {
-	math::sqrt(length_sq(v))
+	float::sqrt(length_sq(v))
 }
 
 fn normalized(v:vec3) -> vec3 {
@@ -49,11 +47,11 @@ fn cross(a:vec3, b:vec3) -> vec3 {
 }
 
 fn min(a: vec3, b: vec3) -> vec3 {
-	vec3( math::min(a.x,b.x), math::min(a.y, b.y), math::min(a.z, b.z) )
+	vec3( float::min(a.x,b.x), float::min(a.y, b.y), float::min(a.z, b.z) )
 }
 
 fn max(a: vec3, b: vec3) -> vec3 {
-	vec3( math::max(a.x,b.x), math::max(a.y, b.y), math::max(a.z, b.z) )
+	vec3( float::max(a.x,b.x), float::max(a.y, b.y), float::max(a.z, b.z) )
 }
 
 type ray = { origin:vec3, dir:vec3 };
