@@ -1,3 +1,12 @@
+#[link(name = "rustray",
+       vers = "0.1",
+       uuid = "c89c5834-63db-4a6e-8e0a-d75985b1730e",
+       url = "https://github.com/brson/rustray")];
+
+#[comment = "A toy ray tracer in Rust"];
+#[author = "Sebastian Sylvan"];
+#[license = "Unknown"];
+#[crate_type = "bin"];
 
 use std;
 
