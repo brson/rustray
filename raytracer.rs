@@ -1,5 +1,5 @@
 import std::*;
-
+import float::{fmax,fmin};
 import math3d::*;
 
 type color = { r:u8, g:u8, b:u8 };
@@ -49,7 +49,7 @@ fn get_triangle( m : model::mesh, ix : uint ) -> triangle{
 }
 
 fn clamp( x: float, lo: float, hi: float ) -> float{
-	float::min(hi, float::max( x, lo ))
+	fmin(hi, fmax( x, lo ))
 }
 
 fn abs( f:float )->float{
@@ -124,10 +124,10 @@ fn trace_kd_tree(
 						// else, check far node too...
 						let far_hit = trace_kd_tree(mesh, *far, r, plane_dist, maxt);
 						alt far_hit {
-							option::some((h2,_)) when h2.t < h1.t {
+						  option::some((h2,_)) if h2.t < h1.t {
 								ret far_hit;
 							}
-							_ { ret near_hit; }
+						  _ { ret near_hit; }
 						}							
 					}
 					_ { 
@@ -155,7 +155,7 @@ fn trace_soup( mesh: model::mesh, r: ray) -> option::t<(hit_result, uint)>{
 				res = option::some((hit, tri_ix)); 
 			}
 			(option::some((old_hit,_)), option::some(hit))
-				when hit.t < old_hit.t && hit.t > 0f {
+		                if hit.t < old_hit.t && hit.t > 0f {
 				res = option::some((hit, tri_ix));
 			}
 			_ {}

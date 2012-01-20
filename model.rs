@@ -1,5 +1,8 @@
+import std::io::reader;
+import std::io::reader_util;
 import std::{sort, io};
 import math3d::*;
+import float::{fmax, fmin};
 
 type mesh = { vertices: [vec3], indices: [uint], normals: [vec3] };
 
@@ -27,8 +30,8 @@ fn split_triangles( splitter: float, distances: [float], indices: [uint], faces:
 		let d1 = distances[indices[f*3u+1u]];
 		let d2 = distances[indices[f*3u+2u]];
 
-		let maxdist = float::max(d0, float::max(d1, d2));
-		let mindist = float::min(d0, float::min(d1, d2));
+		let maxdist = fmax(d0, fmax(d1, d2));
+		let mindist = fmin(d0, fmin(d1, d2));
 
 		if mindist <= splitter {
 			l += [f];
@@ -39,19 +42,19 @@ fn split_triangles( splitter: float, distances: [float], indices: [uint], faces:
 		}
 	}
 
-	{l:l, r:r}	
+    {l:l, r:r}
 }
 
-tag axis { 
-	x;
-	y;
-	z; 
+enum axis {
+	x,
+	y,
+	z
 }
 
 
-tag kd_tree {
-	leaf( [uint] );
-	node( axis, float, @kd_tree, @kd_tree );
+enum kd_tree {
+	leaf( [uint] ),
+	node( axis, float, @kd_tree, @kd_tree )
 }
 
 fn build_kd_tree( 
@@ -130,14 +133,18 @@ fn build_kd_tree(
 	@node( axis, s, left_tree, right_tree )
 }
 
+fn umax(x: uint, y: uint) -> uint {
+    if x > y { x } else { y }
+}
+
 fn count_kd_tree_nodes( t: kd_tree ) -> {depth:uint, count:uint} {
 	alt t {
 		node(_,_,l,r) {
 			let {depth:d0,count:c0} = count_kd_tree_nodes( *l );
 			let {depth:d1,count:c1} = count_kd_tree_nodes( *r );
-			ret {depth: float::max(d0, d1)+1u, count: c0+c1+1u };		
+			ret {depth: umax(d0, d1)+1u, count: c0+c1+1u };		
 		}
-		leaf {
+		leaf(_) {
 			ret { depth:1u, count:1u };
 		}
 	}
