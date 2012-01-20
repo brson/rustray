@@ -1,4 +1,6 @@
 import std::io;
+import std::io::writer_util;
+import std::io::writer;
 import raytracer::*;
 
 const WIDTH : uint = 512u;
@@ -11,7 +13,7 @@ fn write_ppm( fname: str, width: uint, height: uint, pixels: [color] ){
 
 	writer.write_str(#fmt("P6\n%u %u\n255\n", width, height));
 	for pixel in pixels{
-		writer.write_bytes([pixel.r, pixel.g, pixel.b]);
+		writer.write([pixel.r, pixel.g, pixel.b]);
 	};
 }
 
