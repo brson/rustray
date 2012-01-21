@@ -41,16 +41,16 @@ fn split_triangles( splitter: float, distances: [float], indices: [uint], faces:
 	{l:l, r:r}	
 }
 
-tag axis { 
-	x;
-	y;
-	z; 
+enum axis { 
+	x,
+	y,
+	z 
 }
 
 
-tag kd_tree {
-	leaf( [uint] );
-	node( axis, float, @kd_tree, @kd_tree );
+enum kd_tree {
+	leaf( [uint] )
+	node( axis, float, @kd_tree, @kd_tree )
 }
 
 fn build_kd_tree( 
