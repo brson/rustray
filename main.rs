@@ -17,10 +17,21 @@ fn write_ppm( fname: str, width: uint, height: uint, pixels: [color] ){
 	};
 }
 
-fn main( _args: [str] )
+fn main( args: [str] )
 {
+    if vec::len(args) != 2u {
+        io::println("Usage: rustray OBJ");
+        io::println("");
+        io::println("For example:");
+        io::println("   $ wget http://groups.csail.mit.edu/graphics/classes/6.837/F03/models/cow-nonormals.obj");
+        io::println("   $ rustray cow-nonormals.obj");
+        io::println("   $ gimp oput.ppm");
+        io::println("");
+        fail;
+    }
 	
-	let model = model::read_model( "models/cow-nonormals.obj" );
+    io::println("Reading \"" + args[1] + "\"...");
+	let model = model::read_model( args[1] );
 	let {depth,count} = model::count_kd_tree_nodes( model.kd_tree );
 
 	io::println(#fmt("Done.\nLoaded model.\n\tVerts: %u, Tris: %u\n\tKD-tree depth: %u, #nodes: %u", 
@@ -31,7 +42,9 @@ fn main( _args: [str] )
 	io::print("Tracing rays... ");
 	let pixels = raytracer::generate_raytraced_image(model, FOV, WIDTH, HEIGHT);
 	io::println("Done!");
-	io::print("Writing file... ");
-	write_ppm( "oput.ppm", WIDTH, HEIGHT, pixels );	
+    
+    let outputfile = "./oput.ppm";
+	io::print("Writing \"" + outputfile + "\"...");
+	write_ppm( outputfile, WIDTH, HEIGHT, pixels );	
 	io::println("Done!");
 }
