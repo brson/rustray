@@ -1,6 +1,5 @@
-import std::io;
-import std::io::writer_util;
-import std::io::writer;
+import io::writer_util;
+import io::writer;
 import raytracer::*;
 
 const WIDTH : uint = 512u;

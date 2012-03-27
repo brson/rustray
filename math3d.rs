@@ -62,7 +62,7 @@ type triangle = { p1: vec3, p2: vec3, p3: vec3 };
 
 type hit_result = { barycentric: vec3, t: float };
 
-fn ray_triangle_intersect( r:ray, t:triangle ) -> option::t<hit_result> {
+fn ray_triangle_intersect( r:ray, t:triangle ) -> option<hit_result> {
 	let e1 = sub(t.p2, t.p1);
 	let e2 = sub(t.p3, t.p1);
 	let s1 = cross(r.dir, e2);

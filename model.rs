@@ -1,6 +1,6 @@
-import std::io::reader;
-import std::io::reader_util;
-import std::{sort, io};
+import io::reader;
+import io::reader_util;
+import std::sort;
 import math3d::*;
 import float::{fmax, fmin};
 
@@ -10,20 +10,20 @@ type model = { mesh: mesh, kd_tree: kd_tree };
 
 fn find_split_plane( distances: [float], indices: [uint], faces: [uint] ) -> float {
 	
-	let face_distances = [];
+	let mut face_distances = [];
 	for f in faces {
 		face_distances += [distances[indices[f*3u]]]; 
 		face_distances += [distances[indices[f*3u+1u]]];
 		face_distances += [distances[indices[f*3u+2u]]];
 	}
 
-	let sorted_distances = sort::merge_sort( {|a,b| a<b}, face_distances );
+	let mut sorted_distances = sort::merge_sort( {|a,b| a<b}, face_distances );
 	sorted_distances[ vec::len(sorted_distances)/2u ]
 }
 
 fn split_triangles( splitter: float, distances: [float], indices: [uint], faces: [uint] ) -> {l:[uint],r:[uint]} {
-	let l = [];
-	let r = [];
+	let mut l = [];
+	let mut r = [];
 	
 	for f in faces {
 		let d0 = distances[indices[f*3u   ]];
@@ -72,10 +72,13 @@ fn build_kd_tree(
 	}
 
 	let extent = sub(aabbmax, aabbmin);
-	let axis = extent.x > extent.y && extent.x > extent.z ? x :
-		   extent.y > extent.z ? y : z;
+        let axis = if extent.x > extent.y && extent.x > extent.z {
+            x
+        } else {
+            if extent.y > extent.z { y } else { z }
+        };
 
-	let dists;	
+	let mut dists;	
 	alt axis {
 		x() { dists = xdists }
 		y() { dists = ydists }
@@ -86,13 +89,13 @@ fn build_kd_tree(
 	let {l,r} = split_triangles( s, dists, indices, faces );	
 
 	// Stop when there's too much overlap between the two halves
-	if vec::len(l) + vec::len(r) as float > vec::len(faces) as float * 1.35f {		
+	if (vec::len(l) + vec::len(r)) as float > vec::len(faces) as float * 1.35f {		
 		ret @leaf( faces );
 	}
 
 	// adjust bounding boxes for children
-	let left_aabbmax;
-	let right_aabbmin;
+	let mut left_aabbmax;
+	let mut right_aabbmin;
 	alt axis {
 		x() { 
 			left_aabbmax = { x: s with aabbmax };
@@ -151,23 +154,23 @@ fn count_kd_tree_nodes( t: kd_tree ) -> {depth:uint, count:uint} {
 }
 
 fn read_model(fname: str) -> model {
-
+        import iter::iterable;
 	
 	let m = read_mesh( fname );
 
-	std::io::print("Building kd-tree... ");
+	io::print("Building kd-tree... ");
 
 	// just create a vector of 0..N-1 as our face array
 	let max_tri_ix = vec::len(m.indices)/3u -1u;
 	check( uint::le(0u, max_tri_ix) );
-	let faces = vec::enum_uints(0u, max_tri_ix);
+	let faces = iter::to_vec(uint::range(0u, max_tri_ix, _));
 
 	// de-mux vertices for easier access later
-	let xdists = [];
-	let ydists = [];
-	let zdists = [];
-	let aabbmin = vec3(float::infinity, float::infinity, float::infinity);
-	let aabbmax = vec3(float::neg_infinity, float::neg_infinity, float::neg_infinity);
+	let mut xdists = [];
+	let mut ydists = [];
+	let mut zdists = [];
+	let mut aabbmin = vec3(float::infinity, float::infinity, float::infinity);
+	let mut aabbmax = vec3(float::neg_infinity, float::neg_infinity, float::neg_infinity);
 	for v in m.vertices {
 		xdists += [v.x];
 		ydists += [v.y];
@@ -192,10 +195,10 @@ fn read_model(fname: str) -> model {
 
 fn read_mesh(fname: str) -> mesh {
 	let reader = result::get( io::file_reader( fname ) );
-	let vertices = [];
-	let indices = [];
+	let mut vertices = [];
+	let mut indices = [];
 	
-	let vert_normals : [mutable vec3]= [mutable];
+	let mut vert_normals : [mut vec3]= [mut];
 
 	while !reader.eof() {
 		let line : str = reader.read_line();
@@ -203,25 +206,25 @@ fn read_mesh(fname: str) -> mesh {
 			cont;
 		}		
 	
-		let tokens = str::split(line, ' ' as u8 );	
+		let tokens = str::split_char(line, ' ');	
 		
 		if tokens[0] == "v"{
 			assert vec::len(tokens) == 4u;
-			let v = vec3(	float::from_str(tokens[1]),
-					float::from_str(tokens[2]),
-					float::from_str(tokens[3]));
+			let v = vec3(	option::get(float::from_str(tokens[1])),
+					option::get(float::from_str(tokens[2])),
+					option::get(float::from_str(tokens[3])));
 			assert v.x != float::NaN;
 			assert v.y != float::NaN;
 			assert v.z != float::NaN;
 
 			vertices += [v];
-			vert_normals += [mutable vec3(0f,0f,0f)];			
+			vert_normals += [mut vec3(0f,0f,0f)];			
 
 		} else if tokens[0] == "f" {
 			assert vec::len(tokens) == 4u;
-			let (i0,i1,i2) = (	uint::from_str(tokens[1])-1u,
-						uint::from_str(tokens[2])-1u,
-						uint::from_str(tokens[3])-1u );
+			let (i0,i1,i2) = (	option::get(uint::from_str(tokens[1]))-1u,
+						option::get(uint::from_str(tokens[2]))-1u,
+						option::get(uint::from_str(tokens[3]))-1u );
 			indices += [i0, i1, i2 ];
 			let e1 = math3d::sub(vertices[i1], vertices[i0]);
 			let e2 = math3d::sub(vertices[i2], vertices[i0]);
@@ -244,7 +247,7 @@ fn read_mesh(fname: str) -> mesh {
 
 	ret {	vertices: vertices, 
 		indices: indices, 
-		normals: vec::map_mut( vert_normals, {|v| normalized(v)}) };
+		normals: vec::map( vec::from_mut(vert_normals), {|v| normalized(v)}) };
 }
 
 

@@ -4,8 +4,8 @@ import math3d::*;
 
 type color = { r:u8, g:u8, b:u8 };
 
-fn for_each_pixel( width: uint, height: uint, f : block (x: uint, y: uint) -> color ) -> [color]{
-	let img_pixels = [];
+fn for_each_pixel( width: uint, height: uint, f : fn (x: uint, y: uint) -> color ) -> [color]{
+	let mut img_pixels = [];
 
 
 	uint::range( 0u, height ) { |row|	
@@ -33,9 +33,9 @@ fn generate_test_image( width: uint, height: uint ) -> [color]{
  
 
 fn get_ray( horizontalFOV: float, width: uint, height: uint, x: uint, y: uint) -> ray{
-	let dirx = (x as float) - (width/2u as float);
-	let diry = -((y as float) - (height/2u as float));
-	let dirz = -(width/2u as float) / float::tan(horizontalFOV*0.5);
+	let dirx = (x as float) - ((width/2u) as float);
+	let diry = -((y as float) - ((height/2u) as float));
+	let dirz = -((width/2u) as float) / float::tan(horizontalFOV*0.5);
 	{ origin: vec3(0.5f, 0f, 10f), 
 	  dir: normalized( vec3( dirx+0.00001f, 
 				 diry+0.00001f, 
@@ -53,7 +53,7 @@ fn clamp( x: float, lo: float, hi: float ) -> float{
 }
 
 fn abs( f:float )->float{
-	f < 0f ? -f : f
+        if f < 0f { -f } else { f }
 }
 
 fn trace_kd_tree( 
@@ -62,12 +62,12 @@ fn trace_kd_tree(
 	r: ray, 
 	mint: float, 
 	maxt: float ) 
-	-> option::t<(hit_result, uint)> {
+	-> option<(hit_result, uint)> {
 
 	alt kd_tree {
 		model::leaf(tris) {
 
-			let res : option::t<(hit_result, uint)> = option::none;
+			let mut res : option<(hit_result, uint)> = option::none;
 			for tri_index in tris{
 				let t = get_triangle( mesh, tri_index ); 
 				let new_hit_result = ray_triangle_intersect( r, t );
@@ -101,9 +101,11 @@ fn trace_kd_tree(
 
 			let plane_dist = (splitter - origin) / dir;
 							
-			let (near,far) = origin < splitter || (origin == plane_dist && dir <= 0f) ?
- 						(left_tree,right_tree) : (right_tree, left_tree);
-		
+	        let (near,far) = if origin < splitter || (origin == plane_dist && dir <= 0f) {
+ 		        (left_tree,right_tree)
+            } else {
+                (right_tree, left_tree)
+            };
 
 			if plane_dist > maxt || plane_dist < 0f {
 				ret trace_kd_tree( mesh, *near, r, mint, maxt);
@@ -141,9 +143,9 @@ fn trace_kd_tree(
 	}
 }
 
-fn trace_soup( mesh: model::mesh, r: ray) -> option::t<(hit_result, uint)>{
+fn trace_soup( mesh: model::mesh, r: ray) -> option<(hit_result, uint)>{
 	
-	let res : option::t<(hit_result, uint)> = option::none;
+	let mut res : option<(hit_result, uint)> = option::none;
 	
 	uint::range( 0u, vec::len( mesh.indices ) / 3u) { |tri_ix|
 		let tri = get_triangle(mesh,tri_ix);
@@ -166,8 +168,8 @@ fn trace_soup( mesh: model::mesh, r: ray) -> option::t<(hit_result, uint)>{
 }
 
 fn shade( pos: vec3, n: vec3, r: ray, color: vec3, reflectivity: float, 
-	  shadow_test: block( light_dir: vec3 ) -> bool, 
-	  reflection_color: block( reflection_dir: vec3) -> vec3 ) -> vec3 {
+	  shadow_test: fn( light_dir: vec3 ) -> bool, 
+	  reflection_color: fn( reflection_dir: vec3) -> vec3 ) -> vec3 {
 
 	let light_pos : vec3 = {x: 3f, y: 3f, z: 8.5f};
 	let light_strength = 50f;
@@ -196,7 +198,7 @@ fn shade( pos: vec3, n: vec3, r: ray, color: vec3, reflectivity: float,
 	};
 
 	let reflection = add(scale(n, dot(view_vec, n)*2f), view_vec);
-	let rcolor = reflectivity > 0.01f ? reflection_color( reflection ) : vec3(0f,0f,0f);
+	let rcolor = if reflectivity > 0.01f { reflection_color( reflection ) } else { vec3(0f,0f,0f) };
 
 	lerp(direct_light, rcolor, reflectivity)
 }
@@ -204,7 +206,7 @@ fn shade( pos: vec3, n: vec3, r: ray, color: vec3, reflectivity: float,
 
 type intersection = { pos: vec3, n: vec3, color: vec3, reflectivity: float };
 
-fn trace_ray( r : ray, model : model::model, mint: float, maxt: float) -> option::t<intersection> {
+fn trace_ray( r : ray, model : model::model, mint: float, maxt: float) -> option<intersection> {
 
 	
 	let use_kd_tree = true;	
@@ -214,14 +216,14 @@ fn trace_ray( r : ray, model : model::model, mint: float, maxt: float) -> option
 	let checker_hit_t = (checkerboard_height - r.origin.y) / r.dir.y;
 
 	// compute checkerboard color, if we hit the floor plane
-	let (result, new_maxt) = if checker_hit_t > mint && checker_hit_t < maxt {
+	let mut (result, new_maxt) = if checker_hit_t > mint && checker_hit_t < maxt {
 
 			let s = 1.0f;			
 			let pos = add(r.origin, scale(r.dir, checker_hit_t));
 			
 			// hacky checkerboard pattern
-			let (u,v) = (pos.x*s + 100000f as uint, pos.z*s  + 100000f as uint);
-			let color = (u + v) % 2u == 0u ? vec3(1f,1f,1f) : vec3(0.5f,0.5f,0.2f);
+			let (u,v) = ((pos.x*s + 100000f) as uint, (pos.z*s  + 100000f) as uint);
+        	let color = if (u + v) % 2u == 0u { vec3(1f,1f,1f) } else { vec3(0.5f,0.5f,0.2f) };
 			let intersection = option::some( { 
 						pos: pos,
 						n: vec3(0f,1f,0f),
@@ -233,9 +235,11 @@ fn trace_ray( r : ray, model : model::model, mint: float, maxt: float) -> option
 		};
 	
 	// trace against scene
-	let trace_result = use_kd_tree ? 
-				trace_kd_tree( model.mesh, model.kd_tree, r, mint, new_maxt ) :
-				trace_soup( model.mesh, r);
+	let trace_result = if use_kd_tree {
+				trace_kd_tree( model.mesh, model.kd_tree, r, mint, new_maxt )
+    } else {
+				trace_soup( model.mesh, r)
+    };
 
 	option::may( trace_result, { |hit|
 		let (hit_info, tri_ix) = hit;
