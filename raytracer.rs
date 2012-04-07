@@ -1,9 +1,11 @@
 import std::*;
-import float::{fmax,fmin};
 import math3d::*;
+
+import main::*; // for the consts.. ugh... make the constants go away
 
 type color = { r:u8, g:u8, b:u8 };
 
+#[inline(always)] 
 fn for_each_pixel( width: uint, height: uint, f : fn (x: uint, y: uint) -> color ) -> [color]{
 	let mut img_pixels = [];
 
@@ -16,139 +18,315 @@ fn for_each_pixel( width: uint, height: uint, f : fn (x: uint, y: uint) -> color
 	ret img_pixels;
 }
 
-fn generate_test_image( width: uint, height: uint ) -> [color]{
-	for_each_pixel( width, height, {|i,j|
-		let checker = (i / 32u + j / 32u) % 2u == 0u;
-		let ifloat = (i as float) * 255.0f / (width as float);
-		let jfloat = (j as float) * 255.0f / (height as float);
-		if checker { 
-			{r: 0u8, g: 0u8, b:155u8} 
-		} else { 
-			{r: ifloat as u8, 
-			 g: jfloat as u8,
-			 b:0u8} 
+#[inline(always)] 
+fn get_ray( horizontalFOV: f32, width: uint, height: uint, x: uint, y: uint, sample_jitter : (f32,f32)) -> ray{	
+	let (jitterx,jittery) = sample_jitter;
+	let dirx = (x as f32) - ((width/2u) as f32) + jitterx;
+	let diry = -((y as f32) - ((height/2u) as f32)) + jittery;
+	let dirz = -((width/2u) as f32) / f32::tan(horizontalFOV*0.5f32);
+	{ origin: vec3(0f32, 0f32, 1f32), 
+	  dir: normalized( vec3( dirx, diry, dirz) ) }
+}
+
+type rand_env = { rng: rand::rng, floats: [f32], disk_samples: [(f32,f32)], hemicos_samples: [vec3] };
+
+#[incline(always)]
+fn get_rand_env() -> rand_env{
+	let rng = rand::rng();	
+	
+	let disk_samples = vec::from_fn(513u) {|_x| 
+		// compute random position on light disk
+		let r_sqrt = f32::sqrt(rng.next_float() as f32);
+		let theta = rng.next_float() as f32 * 2f32 * f32::consts::pi;
+		(r_sqrt * f32::cos(theta), r_sqrt*f32::sin(theta))
+	};
+	
+	let mut hemicos_samples = [];
+	
+	uint::range(0u, NUM_GI_SAMPLES_SQRT) { |x|
+		uint::range(0u, NUM_GI_SAMPLES_SQRT) { |y|	
+			let (u,v) = (	( x as f32 + rng.next_float() as f32) / NUM_GI_SAMPLES_SQRT as f32,
+							( y as f32 + rng.next_float() as f32) / NUM_GI_SAMPLES_SQRT as f32 );
+			hemicos_samples += [cosine_hemisphere_sample(u,v)];
 		}
-	})
+	};	
+	
+	{ 	rng: rng,	
+		floats: vec::from_fn(513u, {|_x| rng.next_float() as f32 } ),
+		disk_samples: disk_samples,
+		hemicos_samples: hemicos_samples }	
 }
- 
+/*
+#[incline(always)]
+fn sample_floats( rnd: rand_env, num: uint, body: fn(f32) ) {
+	let mut ix = rnd.rng.next() % vec::len(rnd.floats); // start at random location
+	iter::repeat(num) {		
+		body( rnd.floats[ix] );		
+		ix = (ix + 1u) % vec::len(rnd.floats);
+	}
+}
+*/
 
-fn get_ray( horizontalFOV: float, width: uint, height: uint, x: uint, y: uint) -> ray{
-	let dirx = (x as float) - ((width/2u) as float);
-	let diry = -((y as float) - ((height/2u) as float));
-	let dirz = -((width/2u) as float) / float::tan(horizontalFOV*0.5);
-	{ origin: vec3(0.5f, 0f, 10f), 
-	  dir: normalized( vec3( dirx+0.00001f, 
-				 diry+0.00001f, 
-				 dirz) ) }
+#[incline(always)]
+fn sample_floats_2d_offset( offset: uint, rnd: rand_env, num: uint, body: fn(f32,f32) ) {
+	let mut ix = offset % vec::len(rnd.floats);
+	iter::repeat(num) {	||	
+		let r1 = rnd.floats[ix];
+		ix = (ix + 1u) % vec::len(rnd.floats);
+		let r2 = rnd.floats[ix];
+		body(r1,r2);		
+		ix = (ix + 1u) % vec::len(rnd.floats);		
+	}
 }
 
-fn get_triangle( m : model::mesh, ix : uint ) -> triangle{
+#[inline(always)]
+fn sample_disk( rnd: rand_env, num: uint, body: fn(f32,f32) ){	
+
+	if ( num == 1u ) {
+		body(0f32,0f32);
+	} else {
+		let mut ix = rnd.rng.next() % vec::len(rnd.disk_samples); // start at random location
+		iter::repeat(num) { ||		
+			let (u,v) = rnd.disk_samples[ix];
+			body(u,v);		
+			ix = (ix + 1u) % vec::len(rnd.disk_samples);
+		};
+	}
+}
+
+// Sample 2 floats at a time, starting with an offset that's passed in
+#[incline(always)]
+fn sample_floats_2d( rnd: rand_env, num: uint, body: fn(f32,f32) ) {	
+	sample_floats_2d_offset( rnd.rng.next(), rnd, num, body);
+}
+
+#[incline(always)]
+fn sample_stratified_2d( rnd: rand_env, m: uint, n : uint, body: fn(f32,f32) ) {
+	let m_inv = 1f32/m as f32;
+	let n_inv = 1f32/n as f32;	
+	
+	let start_offset = rnd.rng.next();
+	uint::range( 0u, m ) { |samplex|
+		// sample one "row" of 2d floats
+		let mut sampley = 0u;
+		sample_floats_2d_offset( start_offset + n*samplex, rnd, n ) { |u,v|	
+			body( 	(samplex as f32 + u) * m_inv, 
+					(sampley as f32 + v) * n_inv );
+			sampley += 1u;
+		};
+	}
+}
+
+#[incline(always)]
+fn sample_cosine_hemisphere( rnd: rand_env, n: vec3, body: fn(vec3) ) {
+	let rot_to_up = rotate_to_up(n);
+	let random_rot = rotate_y( rnd.floats[ rnd.rng.next() % vec::len(rnd.floats) ] ); // random angle about y
+	let m = mul_mtx33(rot_to_up, random_rot);
+	for s in rnd.hemicos_samples {
+		body(transform(m,s));
+	}
+}
+
+#[inline(always)] 
+fn get_triangle( m : model::polysoup, ix : uint ) -> triangle{
 	{ 	p1: m.vertices[ m.indices[ix*3u   ] ],
 		p2: m.vertices[ m.indices[ix*3u+1u] ],
 		p3: m.vertices[ m.indices[ix*3u+2u] ] }
 }
 
-fn clamp( x: float, lo: float, hi: float ) -> float{
-	fmin(hi, fmax( x, lo ))
+#[inline(always)] 
+fn clamp( x: f32, lo: f32, hi: f32 ) -> f32{
+	f32::fmin(hi, f32::fmax( x, lo ))
 }
 
-fn abs( f:float )->float{
-        if f < 0f { -f } else { f }
-}
-
+#[inline(always)] 
 fn trace_kd_tree( 
-	mesh: model::mesh, 
-	kd_tree: model::kd_tree, 
+	polys: model::polysoup, 
+	kd_tree_nodes: [model::kd_tree_node],
+	kd_tree_root: uint, 
 	r: ray, 
-	mint: float, 
-	maxt: float ) 
+	inv_dir: vec3,
+	inmint: f32, 
+	inmaxt: f32 ) 
 	-> option<(hit_result, uint)> {
+	
+	let mut res : option<(hit_result, uint)> = option::none;
+	let mut closest_hit = inmaxt;
+	
+	let mut stack : [(uint, f32, f32)] = [];
+	let mut mint = inmint;
+	let mut maxt = inmaxt;
+	let mut cur_node = kd_tree_root;
+	
+	loop {		
+		
+		// skip any nodes that have been superceded
+		// by a closer hit.
+		while mint >= closest_hit {
+			if ( vec::len(stack) > 0u ){
+				let (n,mn,mx) = vec::pop(stack);
+				cur_node = n;
+				mint = mn;
+				maxt = mx;
+			} else {
+				ret res;
+			}
+		}
+		
+		alt kd_tree_nodes[cur_node] {
+			model::leaf(tri_begin, tri_count) {
+				
+				let mut tri_index = tri_begin;
+				while tri_index < tri_begin+tri_count {
+				
+					let t = get_triangle( polys, tri_index ); 
+					let new_hit_result = ray_triangle_intersect( r, t );
 
-	alt kd_tree {
-		model::leaf(tris) {
-
-			let mut res : option<(hit_result, uint)> = option::none;
-			for tri_index in tris{
-				let t = get_triangle( mesh, tri_index ); 
-				let new_hit_result = ray_triangle_intersect( r, t );
-
-				alt (res, new_hit_result){
-					(option::none(), option::some(hr)) {
-						res = option::some((hr,tri_index));
-					}
-					(option::some((hr1,_)), option::some(hr2)) {
-						if hr1.t > hr2.t {
-							res = option::some((hr2,tri_index));
+					alt (res, new_hit_result){
+						(option::none(), option::some(hr)) {
+							res = option::some((hr,tri_index));
+							closest_hit = hr.t;
 						}
+						(option::some((hr1,_)), option::some(hr2)) if hr1.t > hr2.t {
+							res = option::some((hr2,tri_index));
+							closest_hit = hr2.t;
+						}
+						_ {}
 					}
-					_ {}
+					
+					tri_index += 1u;
+				}
+
+					
+				
+				if ( vec::len(stack) > 0u ){
+					let (n,mn,mx) = vec::pop(stack);
+					cur_node = n;
+					mint = mn;
+					maxt = mx;
+				} else {
+					ret res;
+				}
+				
+			}
+			model::node(axis, splitter, right_tree) {
+					
+				// find the scalar direction/origin for the current axis
+				let (inv_dir_scalar, origin) = alt axis {
+					model::x() { (inv_dir.x, r.origin.x) }
+					model::y() { (inv_dir.y, r.origin.y) }
+					model::z() { (inv_dir.z, r.origin.z) }
+				};
+
+				// figure out which side of the spliting plane the ray origin is
+				// i.e. which child we need to test first.
+
+				let (near,far) = if origin < splitter || (origin == splitter && inv_dir_scalar >= 0f32) {
+					(cur_node+1u,right_tree)
+				} else {
+					(right_tree, cur_node+1u)
+				};
+				
+				// find intersection with plane
+				// origin + dir*plane_dist = splitter
+				let plane_dist = (splitter - origin) * inv_dir_scalar;
+
+				if plane_dist > maxt || plane_dist <= 0f32 {
+					cur_node = near;
+				} else if plane_dist < mint {
+					cur_node = far;
+				} else{				
+					vec::push(stack, (far, plane_dist, maxt) );				
+					
+					cur_node = near;
+					maxt = plane_dist;
+				}					
+			}
+		}
+	}
+	
+	
+}
+
+#[inline(always)] 
+fn trace_kd_tree_shadow( 
+	polys: model::polysoup, 
+	kd_tree_nodes: [model::kd_tree_node],
+	kd_tree_root: uint, 
+	r: ray, 
+	inv_dir: vec3,
+	inmint: f32, 
+	inmaxt: f32 ) 
+	-> bool {
+
+	let mut stack : [(uint, f32, f32)] = [];
+	let mut mint = inmint;
+	let mut maxt = inmaxt;
+	let mut cur_node = kd_tree_root;
+	loop {		
+		
+		alt kd_tree_nodes[cur_node] {
+			model::leaf(tri_begin, tri_count) {
+				
+				let mut tri_index = tri_begin;
+				while tri_index < tri_begin + tri_count {
+					let t = get_triangle( polys, tri_index ); 
+					if option::is_some( ray_triangle_intersect( r, t ) ) {
+						ret true;
+					}
+					tri_index += 1u;
+				}
+				if ( vec::len(stack) > 0u ){
+					let (n,mn,mx) = vec::pop(stack);
+					cur_node = n;
+					mint = mn;
+					maxt = mx;
+				} else {
+					ret false;
 				}
 			}
-
-			ret res;
-		}
-		model::node(axis, splitter, left_tree, right_tree) {
-				
-			// find the scalar direction/origin for the current axis
-			let (dir, origin) = alt axis {
-				model::x() { (r.dir.x, r.origin.x) }
-				model::y() { (r.dir.y, r.origin.y) }
-				model::z() { (r.dir.z, r.origin.z) }
-			};
-
-			// find intersection with plane
-			// origin + dir*t = splitter
-
-			let plane_dist = (splitter - origin) / dir;
-							
-	        let (near,far) = if origin < splitter || (origin == plane_dist && dir <= 0f) {
- 		        (left_tree,right_tree)
-            } else {
-                (right_tree, left_tree)
-            };
-
-			if plane_dist > maxt || plane_dist < 0f {
-				ret trace_kd_tree( mesh, *near, r, mint, maxt);
-			} else if plane_dist < mint {
-				ret trace_kd_tree(mesh, *far, r, mint, maxt);
-			} else{
-				let near_hit = trace_kd_tree( mesh, *near, r, mint, plane_dist);
-				
-				alt near_hit {
-					option::some((h1,_)) {
-
-						// if we hit something before the splitting plane, 
-						// we can early out now.
-						if h1.t < plane_dist { 
-							ret near_hit; 
-						}
-						
-						// else, check far node too...
-						let far_hit = trace_kd_tree(mesh, *far, r, plane_dist, maxt);
-						alt far_hit {
-						  option::some((h2,_)) if h2.t < h1.t {
-								ret far_hit;
-							}
-						  _ { ret near_hit; }
-						}							
-					}
-					_ { 
-						ret trace_kd_tree(mesh, *far, r, plane_dist, maxt); 
-					}
-				}	
-			}
+			model::node(axis, splitter, right_tree){
 					
-							
+				// find the scalar direction/origin for the current axis
+				let (inv_dir_scalar, origin) = alt axis {
+					model::x() { (inv_dir.x, r.origin.x) }
+					model::y() { (inv_dir.y, r.origin.y) }
+					model::z() { (inv_dir.z, r.origin.z) }
+				};
+
+				// figure out which side of the spliting plane the ray origin is
+				// i.e. which child we need to test first.
+				let (near,far) = if origin < splitter || (origin == splitter && inv_dir_scalar >= 0f32) {
+					(cur_node+1u,right_tree)
+				} else {
+					(right_tree, cur_node+1u)
+				};
+				
+				// find intersection with plane
+				// origin + dir*t = splitter
+				let plane_dist = (splitter - origin) * inv_dir_scalar;
+
+				if plane_dist > maxt || plane_dist < 0f32 {
+					cur_node = near;
+				} else if plane_dist < mint {
+					cur_node = far;
+				} else{
+					vec::push(stack, (far, plane_dist, maxt));
+					cur_node = near;
+					maxt = plane_dist;				
+				}			
+			}
 		}
 	}
 }
 
-fn trace_soup( mesh: model::mesh, r: ray) -> option<(hit_result, uint)>{
+#[inline(always)] 
+fn trace_soup( polys: model::polysoup, r: ray) -> option<(hit_result, uint)>{
 	
 	let mut res : option<(hit_result, uint)> = option::none;
 	
-	uint::range( 0u, vec::len( mesh.indices ) / 3u) { |tri_ix|
-		let tri = get_triangle(mesh,tri_ix);
+	uint::range( 0u, vec::len( polys.indices ) / 3u) { |tri_ix|
+		let tri = get_triangle(polys,tri_ix);
 
 		let new_hit = ray_triangle_intersect( r, tri );
 
@@ -157,7 +335,7 @@ fn trace_soup( mesh: model::mesh, r: ray) -> option<(hit_result, uint)>{
 				res = option::some((hit, tri_ix)); 
 			}
 			(option::some((old_hit,_)), option::some(hit))
-		                if hit.t < old_hit.t && hit.t > 0f {
+		                if hit.t < old_hit.t && hit.t > 0f32 {
 				res = option::some((hit, tri_ix));
 			}
 			_ {}
@@ -167,130 +345,235 @@ fn trace_soup( mesh: model::mesh, r: ray) -> option<(hit_result, uint)>{
 	ret res;
 }
 
-fn shade( pos: vec3, n: vec3, r: ray, color: vec3, reflectivity: float, 
-	  shadow_test: fn( light_dir: vec3 ) -> bool, 
-	  reflection_color: fn( reflection_dir: vec3) -> vec3 ) -> vec3 {
+type light = { pos: vec3, strength: f32, radius: f32, color: vec3};
 
-	let light_pos : vec3 = {x: 3f, y: 3f, z: 8.5f};
-	let light_strength = 50f;
+fn make_light( pos: vec3, strength: f32, radius: f32, color: vec3 ) -> light {
+	{ pos: pos, strength: strength, radius: radius, color: color }
+}
 
-	let light_vec = sub(light_pos, pos);
+#[inline(always)]
+fn direct_lighting( lights: [light], pos: vec3, n: vec3, view_vec: vec3, rnd: rand_env, depth: uint, occlusion_probe: fn(vec3) -> bool ) -> vec3 {
+
+	let mut direct_light = vec3(0f32,0f32,0f32);
+	for l in lights {
+	
+		// compute shadow contribution
+		let mut shadow_contrib = 0f32;
+		
+		
+		let num_samples = if depth == 0u { // do one tap in reflections and GI
+				NUM_LIGHT_SAMPLES 
+			} else { 
+				1u 
+			}; 
+			
+		let rot_to_up = rotate_to_up(normalized(sub(pos,l.pos)));
+		let shadow_sample_weight = 1f32 / (num_samples as f32);
+		sample_disk(rnd,num_samples) {|u,v|		// todo: stratify this
+
+			// scale and rotate disk sample, and position it at the light's location
+			let sample_pos = add(l.pos,transform(rot_to_up, vec3(u*l.radius,0f32,v*l.radius) ));			
+		
+			if !occlusion_probe( sub(sample_pos, pos)) {
+				shadow_contrib += shadow_sample_weight;
+			}
+		}
+		
+		let light_vec = sub(l.pos, pos);
+		let light_contrib =	
+			if shadow_contrib == 0f32{
+				vec3(0f32, 0f32, 0f32)
+			} else {
+
+				let light_vec_n = normalized(light_vec);		
+				let half_vector = normalized(add(light_vec_n, view_vec));
+
+				let s = dot(n,half_vector);
+				let specular = f32::pow(s,175f32);
+
+				let atten = shadow_contrib*l.strength*(1.0f32/length_sq(light_vec) + specular*0.05f32);
+			
+				let intensity = atten*dot(n, light_vec_n );
+			
+				scale(l.color, intensity)
+			};
+			
+		direct_light = add(direct_light, light_contrib);
+	}
+	
+	ret direct_light;
+}
+
+#[inline(always)] 
+fn shade(
+	pos: vec3, n: vec3, n_face: vec3, r: ray, color: vec3, reflectivity: f32, lights: [light], &rnd: rand_env, depth: uint,
+	occlusion_probe: fn(vec3) -> bool, 
+	color_probe: fn(vec3) -> vec3 ) -> vec3 {
+
 	let view_vec = normalized(sub(r.origin, pos));
 
-	let direct_light = if shadow_test(light_vec){
-		vec3(0f, 0f, 0f)
-	} else {
-
-		let light_vec_n = normalized(light_vec);
-
-		
-		let half_vector = normalized(add(light_vec_n, view_vec));
-
-		let s = dot(n,half_vector);
-		let specular = s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s*s;				
-
+	// pass in n or n_face for smooth/flat shading
+	let shading_normal = if USE_SMOOTH_NORMALS_FOR_DIRECT_LIGHTING { n } else { n_face };
 	
-		let atten = light_strength*(1.0f/length_sq(light_vec) + specular*0.01f);
+	let direct_light = direct_lighting(lights, pos, shading_normal, view_vec, rnd, depth, occlusion_probe);
+	let reflection = sub(scale(shading_normal, dot(view_vec, shading_normal)*2f32), view_vec);
+	let rcolor = if reflectivity > 0.001f32 { color_probe( reflection ) } else { vec3(0f32,0f32,0f32) };
 	
-		let intensity = atten*dot(n, light_vec_n );
-	
-		scale(color, intensity)
+	let mut ambient = vec3(0.5f32,0.5f32,0.5f32);
+	/*let mut ao = 0f32;
+	let rot_to_up = rotate_to_up(n_face);
+	const NUM_AO_SAMPLES: uint = 5u;
+	sample_stratified_2d( rnd, NUM_AO_SAMPLES, NUM_AO_SAMPLES ) { |u,v|				
+		let sample_vec = transform(rot_to_up, cosine_hemisphere_sample(u,v) );
+		//let sample_vec = cosine_hemisphere_sample(u,v);
+		if !occlusion_probe( scale(sample_vec, 0.1f32) ) {
+				ao += 1f32/((NUM_AO_SAMPLES*NUM_AO_SAMPLES) as f32);
+		}			
 	};
-
-	let reflection = add(scale(n, dot(view_vec, n)*2f), view_vec);
-	let rcolor = if reflectivity > 0.01f { reflection_color( reflection ) } else { vec3(0f,0f,0f) };
-
-	lerp(direct_light, rcolor, reflectivity)
+	ambient = scale(ambient,ao); // todo: add ambient color */
+	
+	// Final gather GI
+	let gi_normal = if USE_SMOOTH_NORMALS_FOR_GI { n } else { n_face };
+	ambient = vec3(0f32,0f32,0f32);
+	if depth == 0u && NUM_GI_SAMPLES_SQRT > 0u {		
+		sample_cosine_hemisphere( rnd, gi_normal ) { |sample_vec|				
+			ambient = add( ambient, color_probe( sample_vec ) );	
+		};
+		ambient = scale(ambient, 1f32 / ((NUM_GI_SAMPLES_SQRT * NUM_GI_SAMPLES_SQRT) as f32 * f32::consts::pi )); 
+	}
+	
+	lerp( mul(color,add(direct_light, ambient)), rcolor, reflectivity)
 }
 
 
-type intersection = { pos: vec3, n: vec3, color: vec3, reflectivity: float };
+type intersection = { pos: vec3, n: vec3, n_face: vec3, color: vec3, reflectivity: f32 };
 
-fn trace_ray( r : ray, model : model::model, mint: float, maxt: float) -> option<intersection> {
-
-	
-	let use_kd_tree = true;	
-
+#[inline(always)] 
+fn trace_checkerboard( checkerboard_height: f32, r : ray, mint: f32, maxt: f32) -> (option<intersection>, f32) {
 	// trace against checkerboard first
-	let checkerboard_height = -3.5f;
 	let checker_hit_t = (checkerboard_height - r.origin.y) / r.dir.y;
 
 	// compute checkerboard color, if we hit the floor plane
-	let mut (result, new_maxt) = if checker_hit_t > mint && checker_hit_t < maxt {
-
-			let s = 1.0f;			
+	if checker_hit_t > mint && checker_hit_t < maxt {
+					
 			let pos = add(r.origin, scale(r.dir, checker_hit_t));
 			
 			// hacky checkerboard pattern
-			let (u,v) = ((pos.x*s + 100000f) as uint, (pos.z*s  + 100000f) as uint);
-        	let color = if (u + v) % 2u == 0u { vec3(1f,1f,1f) } else { vec3(0.5f,0.5f,0.2f) };
+			let (u,v) = (f32::floor(pos.x*5f32) as int, f32::floor(pos.z*5f32) as int);
+			let is_white = (u + v) % 2 == 0 ;
+        	let color = if is_white { vec3(1f32,1f32,1f32) } else { vec3(1.0f32,0.5f32,0.5f32) };
 			let intersection = option::some( { 
 						pos: pos,
-						n: vec3(0f,1f,0f),
+						n: vec3(0f32,1f32,0f32),
+						n_face: vec3(0f32,1f32,0f32),
 						color: color,
-						reflectivity: 0.0f } );
+						reflectivity: if is_white {0.3f32} else {0.0f32} } );
 			(intersection, checker_hit_t)
-		} else {
-			(option::none, maxt)
-		};
+	} else {
+		(option::none, maxt)
+	}
+}
+
+#[inline(always)] 
+fn trace_ray( r : ray, mesh : model::mesh, mint: f32, maxt: f32) -> option<intersection> {
+
+	let use_kd_tree = true;	
+
+	let y_size = math3d::sub(mesh.bounding_box.max, mesh.bounding_box.min).y;
+	
+	// compute checkerboard color, if we hit the floor plane
+	let (checker_intersection, new_maxt) = trace_checkerboard(-y_size*0.5f32,r,mint,maxt);
+	
+	
+	// check scene bounding box first	
+	if !ray_aabb_check( r, new_maxt, mesh.bounding_box ){
+		ret checker_intersection;
+	}
 	
 	// trace against scene
-	let trace_result = if use_kd_tree {
-				trace_kd_tree( model.mesh, model.kd_tree, r, mint, new_maxt )
+	let trace_result = if use_kd_tree {													
+		trace_kd_tree( mesh.polys, mesh.kd_tree.nodes, mesh.kd_tree.root, r, recip( r.dir ), mint, new_maxt )
     } else {
-				trace_soup( model.mesh, r)
+		trace_soup( mesh.polys, r)
     };
-
-	option::may( trace_result, { |hit|
-		let (hit_info, tri_ix) = hit;
 	
-	
-		if hit_info.t > 0f {
+	alt trace_result {
+		option::some((hit_info, tri_ix)) if hit_info.t > 0f32 {
 			let pos = add( r.origin, scale(r.dir, hit_info.t));
 						
-			let (v0,v1,v2) = (	model.mesh.indices[tri_ix*3u], 
-						model.mesh.indices[tri_ix*3u+1u], 	
-						model.mesh.indices[tri_ix*3u+2u] );		
+			let (i0,i1,i2) = (	mesh.polys.indices[tri_ix*3u], 
+								mesh.polys.indices[tri_ix*3u+1u], 	
+								mesh.polys.indices[tri_ix*3u+2u] );		
 
 			// interpolate vertex normals...
 			let n = normalized(
-					add( scale( model.mesh.normals[v0], hit_info.barycentric.z),
-					add( scale( model.mesh.normals[v1], hit_info.barycentric.x),
-				     	     scale( model.mesh.normals[v2], hit_info.barycentric.y))));			
-					
+					add( 	scale( mesh.polys.normals[i0], hit_info.barycentric.z),
+					add(	scale( mesh.polys.normals[i1], hit_info.barycentric.x),
+							scale( mesh.polys.normals[i2], hit_info.barycentric.y))));			
+							
+			// compute face-normal
+			let (v0,v1,v2) = (	mesh.polys.vertices[i0],
+								mesh.polys.vertices[i1],
+								mesh.polys.vertices[i2] );
+			let n_face = normalized( cross(sub(v1,v0), sub(v2,v0)));
 
-			result = option::some( {
+			option::some( {
 					pos: pos,
 					n: n,
-					color: vec3(1f,1f,1f),
-					reflectivity: 0.3f } );	
-
+					n_face: n_face,
+					color: vec3(1.0f32,1.0f32,1.0f32),
+					reflectivity: 0.0f32 } )		
 		}
-
-	}); 
-
-
-	ret result;
+		_ {
+			checker_intersection
+		}
+	}
 }
 
-fn get_color( r: ray, model: model::model, tmin: float, tmax: float, max_depth: uint) -> vec3 {
-	let default_color = vec3(0.25f, 0.25f, 0.45f);	
+#[inline(always)] 
+fn trace_ray_shadow( r : ray, mesh : model::mesh, mint: f32, maxt: f32) -> bool {
+
+	let y_size = math3d::sub(mesh.bounding_box.max, mesh.bounding_box.min).y;
 	
-	if max_depth == 0u {
+	// compute checkerboard color, if we hit the floor plane
+	let (checker_intersection, new_maxt) = trace_checkerboard(-y_size*0.5f32,r,mint,maxt);
+	
+	if ( option::is_some( checker_intersection ) ){
+		ret true;
+	}
+	
+	// check scene bounding box first	
+	if !ray_aabb_check( r, new_maxt, mesh.bounding_box ){
+		ret false;
+	}
+	
+	// trace against scene
+	trace_kd_tree_shadow( mesh.polys, mesh.kd_tree.nodes, mesh.kd_tree.root, r, recip( r.dir ), mint, new_maxt )
+}
+
+
+#[inline(always)] 
+fn get_color( r: ray, mesh: model::mesh, lights: [light], &rnd: rand_env, tmin: f32, tmax: f32, depth: uint) -> vec3 {
+	let theta = dot( vec3(0f32,1f32,0f32), r.dir );
+	let default_color = vec3(clamp(1f32-theta*4f32,0f32,0.75f32)+0.25f32, clamp(0.5f32-theta*3f32,0f32,0.75f32)+0.25f32, theta);	// fake sky colour
+	
+	
+	if depth >= MAX_TRACE_DEPTH {
 		ret default_color;
 	}
 	
-	alt trace_ray( r, model, tmin, tmax ) {
-		option::some({pos,n,color, reflectivity}) { 
-			let surface_origin = add(pos, scale(n,0.00001f));
+	alt trace_ray( r, mesh, tmin, tmax ) {
+		option::some({pos,n,n_face,color,reflectivity}) { 
+			let surface_origin = add(pos, scale(n_face, 0.000002f32));
 
-			shade(pos, n, r, color, reflectivity, {|light_vec| 
-				let shadow_ray = {origin: surface_origin, dir: light_vec};
-				let st = trace_ray(shadow_ray, model, 0f, 1f);
-				option::is_some(st)
-			}, {|reflection_dir| 
-				let reflection_ray = {origin: surface_origin, dir: reflection_dir};
-				get_color(reflection_ray, model, tmin, tmax, max_depth - 1u)
+			shade(pos, n, n_face, r, color, reflectivity, lights, rnd, depth, 
+			{|occlusion_vec| 
+				let occlusion_ray = {origin: surface_origin, dir: occlusion_vec};
+				trace_ray_shadow(occlusion_ray, mesh, 0f32, 1f32)
+			}, 
+			{|ray_dir| 
+				let reflection_ray = {origin: surface_origin, dir: normalized(ray_dir)};
+				get_color(reflection_ray, mesh, lights, rnd, tmin, tmax, depth + 1u)
 			})
 			
 		}
@@ -299,20 +582,45 @@ fn get_color( r: ray, model: model::model, tmin: float, tmax: float, max_depth: 
 
 }
 
+fn gamma_correct( v : vec3 ) -> vec3 {
+	vec3( 	f32::pow( v.x, 1f32/2.2f32 ),
+			f32::pow( v.y, 1f32/2.2f32 ),
+			f32::pow( v.z, 1f32/2.2f32 ))
+}
+
 fn generate_raytraced_image( 
-	model: model::model, 
-	horizontalFOV: float, 
+	mesh: model::mesh, 
+	horizontalFOV: f32, 
 	width: uint, 
-	height: uint ) -> [color] 
+	height: uint,
+	sample_grid_size: uint) -> [color] 
 {	
+	let sample_coverage_inv = 1f32 / sample_grid_size as f32;
+	let mut rnd = get_rand_env();
+	
+	let lights = [ 	make_light(vec3(-3f32, 3f32, 0f32),10f32, 0.3f32, vec3(1f32,1f32,1f32)) ]; //,
+					//make_light(vec3(0f32, 0f32, 0f32), 10f32, 0.25f32, vec3(1f32,1f32,1.0f32))];
+	
 	for_each_pixel( width, height, {|x,y|
-		let r = get_ray(horizontalFOV, width, height, x,y);
-
-		let shaded_color = scale(get_color(r, model, 0f, float::infinity, 5u), 255f);
-
-		{	r: clamp(shaded_color.x, 0f, 255f) as u8, 
-			g: clamp(shaded_color.y, 0f, 255f) as u8, 
-			b: clamp(shaded_color.z, 0f, 255f) as u8 }
+		let mut shaded_color = vec3(0f32,0f32,0f32);
+		
+		sample_stratified_2d(rnd, sample_grid_size, sample_grid_size){ |u,v|
+			let sample = if sample_grid_size == 1u {
+								(0f32,0f32)
+							} else {
+								(u-0.5f32, v-0.5f32)
+							};
+							
+			let r = get_ray(horizontalFOV, width, height, x, y, sample );
+			shaded_color = add( shaded_color, get_color(r, mesh, lights, rnd, 0f32, f32::infinity, 0u));		
+		}
+				
+		
+		shaded_color = scale(gamma_correct(scale( shaded_color, sample_coverage_inv*sample_coverage_inv)), 255f32);
+		
+		{	r: clamp(shaded_color.x, 0f32, 255f32) as u8, 
+			g: clamp(shaded_color.y, 0f32, 255f32) as u8, 
+			b: clamp(shaded_color.z, 0f32, 255f32) as u8 }
 	})
 }
 
