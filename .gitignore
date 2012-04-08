@@ -4,5 +4,5 @@ rustray
 *.ppm
 *.obj
 *.swp
-
+*.exe
 
