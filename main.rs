@@ -18,7 +18,7 @@ fn write_ppm( fname: str, width: uint, height: uint, pixels: [color] ){
 	let writer = result::get( io::file_writer( fname, [io::create, io::truncate] ) );
 
 	writer.write_str(#fmt("P6\n%u %u\n255\n", width, height));
-	for pixel in pixels{
+	for pixels.each {|pixel|
 		writer.write([pixel.r, pixel.g, pixel.b]);
 	};
 }
@@ -30,7 +30,7 @@ fn main( args: [str] )
         io::println("");
         io::println("For example:");
         io::println("   $ wget http://groups.csail.mit.edu/graphics/classes/6.837/F03/models/cow-nonormals.obj");
-        io::println("   $ rustray cow-nonormals.obj");
+        io::println("   $ ./rustray cow-nonormals.obj");
         io::println("   $ gimp oput.ppm");
         io::println("");
         fail;

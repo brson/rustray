@@ -5,7 +5,7 @@ A raytracing proof-of-concept in Rust
 
 DEMO:
    $ wget http://groups.csail.mit.edu/graphics/classes/6.837/F03/models/cow-nonormals.obj
-   $ rustray cow-nonormals.obj
+   $ ./rustray cow-nonormals.obj
    Reading "cow-nonormals.obj"...
    Unrecognized line in .obj file: # The units used in this file are centimeters.
    Building kd-tree... Done.
