@@ -32,12 +32,12 @@ type rand_env = { rng: rand::rng, floats: [f32], disk_samples: [(f32,f32)], hemi
 
 #[incline(always)]
 fn get_rand_env() -> rand_env{
-	let rng = rand::rng();	
+	let gen = rand::rng();	
 	
 	let disk_samples = vec::from_fn(513u) {|_x| 
 		// compute random position on light disk
-		let r_sqrt = f32::sqrt(rng.next_float() as f32);
-		let theta = rng.next_float() as f32 * 2f32 * f32::consts::pi;
+		let r_sqrt = f32::sqrt(gen.gen_f32());
+		let theta = gen.gen_f32() * 2f32 * f32::consts::pi;
 		(r_sqrt * f32::cos(theta), r_sqrt*f32::sin(theta))
 	};
 	
@@ -45,14 +45,14 @@ fn get_rand_env() -> rand_env{
 	
 	uint::range(0u, NUM_GI_SAMPLES_SQRT) { |x|
 		uint::range(0u, NUM_GI_SAMPLES_SQRT) { |y|	
-			let (u,v) = (	( x as f32 + rng.next_float() as f32) / NUM_GI_SAMPLES_SQRT as f32,
-							( y as f32 + rng.next_float() as f32) / NUM_GI_SAMPLES_SQRT as f32 );
+			let (u,v) = (	( (x as f32) + gen.gen_f32() ) / (NUM_GI_SAMPLES_SQRT as f32),
+							( (y as f32) + gen.gen_f32() ) / (NUM_GI_SAMPLES_SQRT as f32) );
 			hemicos_samples += [cosine_hemisphere_sample(u,v)];
 		}
 	};	
 	
-	{ 	rng: rng,	
-		floats: vec::from_fn(513u, {|_x| rng.next_float() as f32 } ),
+	{ 	rng: gen,	
+		floats: vec::from_fn(513u, {|_x| gen.gen_f32() } ),
 		disk_samples: disk_samples,
 		hemicos_samples: hemicos_samples }	
 }
@@ -85,7 +85,7 @@ fn sample_disk( rnd: rand_env, num: uint, body: fn(f32,f32) ){
 	if ( num == 1u ) {
 		body(0f32,0f32);
 	} else {
-		let mut ix = rnd.rng.next() % vec::len(rnd.disk_samples); // start at random location
+		let mut ix = (rnd.rng.next() as uint) % vec::len(rnd.disk_samples); // start at random location
 		iter::repeat(num) { ||		
 			let (u,v) = rnd.disk_samples[ix];
 			body(u,v);		
@@ -97,21 +97,21 @@ fn sample_disk( rnd: rand_env, num: uint, body: fn(f32,f32) ){
 // Sample 2 floats at a time, starting with an offset that's passed in
 #[incline(always)]
 fn sample_floats_2d( rnd: rand_env, num: uint, body: fn(f32,f32) ) {	
-	sample_floats_2d_offset( rnd.rng.next(), rnd, num, body);
+	sample_floats_2d_offset( rnd.rng.next() as uint, rnd, num, body);
 }
 
 #[incline(always)]
 fn sample_stratified_2d( rnd: rand_env, m: uint, n : uint, body: fn(f32,f32) ) {
-	let m_inv = 1f32/m as f32;
-	let n_inv = 1f32/n as f32;	
+	let m_inv = 1f32/(m as f32);
+	let n_inv = 1f32/(n as f32);	
 	
 	let start_offset = rnd.rng.next();
 	uint::range( 0u, m ) { |samplex|
 		// sample one "row" of 2d floats
 		let mut sampley = 0u;
-		sample_floats_2d_offset( start_offset + n*samplex, rnd, n ) { |u,v|	
-			body( 	(samplex as f32 + u) * m_inv, 
-					(sampley as f32 + v) * n_inv );
+		sample_floats_2d_offset( (start_offset as uint) + (n*samplex as uint), rnd, n ) { |u,v|	
+			body( 	((samplex as f32) + u) * m_inv, 
+					((sampley as f32) + v) * n_inv );
 			sampley += 1u;
 		};
 	}
@@ -120,9 +120,9 @@ fn sample_stratified_2d( rnd: rand_env, m: uint, n : uint, body: fn(f32,f32) ) {
 #[incline(always)]
 fn sample_cosine_hemisphere( rnd: rand_env, n: vec3, body: fn(vec3) ) {
 	let rot_to_up = rotate_to_up(n);
-	let random_rot = rotate_y( rnd.floats[ rnd.rng.next() % vec::len(rnd.floats) ] ); // random angle about y
+	let random_rot = rotate_y( rnd.floats[ rnd.rng.next() as uint % vec::len(rnd.floats) ] ); // random angle about y
 	let m = mul_mtx33(rot_to_up, random_rot);
-	for s in rnd.hemicos_samples {
+	for rnd.hemicos_samples.each {|s|
 		body(transform(m,s));
 	}
 }
@@ -176,25 +176,25 @@ fn trace_kd_tree(
 		alt kd_tree_nodes[cur_node] {
 			model::leaf(tri_begin, tri_count) {
 				
-				let mut tri_index = tri_begin;
+				let mut tri_index : u32 = tri_begin;
 				while tri_index < tri_begin+tri_count {
 				
-					let t = get_triangle( polys, tri_index ); 
+					let t = get_triangle( polys, tri_index as uint ); 
 					let new_hit_result = ray_triangle_intersect( r, t );
 
 					alt (res, new_hit_result){
 						(option::none(), option::some(hr)) {
-							res = option::some((hr,tri_index));
+							res = option::some((hr,tri_index as uint));
 							closest_hit = hr.t;
 						}
 						(option::some((hr1,_)), option::some(hr2)) if hr1.t > hr2.t {
-							res = option::some((hr2,tri_index));
+							res = option::some((hr2,tri_index as uint));
 							closest_hit = hr2.t;
 						}
 						_ {}
 					}
 					
-					tri_index += 1u;
+					tri_index += 1u32;
 				}
 
 					
@@ -222,9 +222,9 @@ fn trace_kd_tree(
 				// i.e. which child we need to test first.
 
 				let (near,far) = if origin < splitter || (origin == splitter && inv_dir_scalar >= 0f32) {
-					(cur_node+1u,right_tree)
+					((cur_node+1u) as uint,right_tree as uint)
 				} else {
-					(right_tree, cur_node+1u)
+					(right_tree as uint, (cur_node+1u) as uint)
 				};
 				
 				// find intersection with plane
@@ -259,7 +259,7 @@ fn trace_kd_tree_shadow(
 	inmaxt: f32 ) 
 	-> bool {
 
-	let mut stack : [(uint, f32, f32)] = [];
+	let mut stack : [(u32, f32, f32)] = [];
 	let mut mint = inmint;
 	let mut maxt = inmaxt;
 	let mut cur_node = kd_tree_root;
@@ -270,15 +270,15 @@ fn trace_kd_tree_shadow(
 				
 				let mut tri_index = tri_begin;
 				while tri_index < tri_begin + tri_count {
-					let t = get_triangle( polys, tri_index ); 
+					let t = get_triangle( polys, tri_index as uint); 
 					if option::is_some( ray_triangle_intersect( r, t ) ) {
 						ret true;
 					}
-					tri_index += 1u;
+					tri_index += 1u32;
 				}
 				if ( vec::len(stack) > 0u ){
 					let (n,mn,mx) = vec::pop(stack);
-					cur_node = n;
+					cur_node = n as uint;
 					mint = mn;
 					maxt = mx;
 				} else {
@@ -297,9 +297,9 @@ fn trace_kd_tree_shadow(
 				// figure out which side of the spliting plane the ray origin is
 				// i.e. which child we need to test first.
 				let (near,far) = if origin < splitter || (origin == splitter && inv_dir_scalar >= 0f32) {
-					(cur_node+1u,right_tree)
+					((cur_node+1u) as u32,right_tree)
 				} else {
-					(right_tree, cur_node+1u)
+					(right_tree, (cur_node+1u) as u32)
 				};
 				
 				// find intersection with plane
@@ -307,12 +307,12 @@ fn trace_kd_tree_shadow(
 				let plane_dist = (splitter - origin) * inv_dir_scalar;
 
 				if plane_dist > maxt || plane_dist < 0f32 {
-					cur_node = near;
+					cur_node = near as uint;
 				} else if plane_dist < mint {
-					cur_node = far;
+					cur_node = far as uint;
 				} else{
 					vec::push(stack, (far, plane_dist, maxt));
-					cur_node = near;
+					cur_node = near as uint;
 					maxt = plane_dist;				
 				}			
 			}
@@ -355,7 +355,7 @@ fn make_light( pos: vec3, strength: f32, radius: f32, color: vec3 ) -> light {
 fn direct_lighting( lights: [light], pos: vec3, n: vec3, view_vec: vec3, rnd: rand_env, depth: uint, occlusion_probe: fn(vec3) -> bool ) -> vec3 {
 
 	let mut direct_light = vec3(0f32,0f32,0f32);
-	for l in lights {
+	for lights.each {|l|
 	
 		// compute shadow contribution
 		let mut shadow_contrib = 0f32;
@@ -419,7 +419,9 @@ fn shade(
 	let reflection = sub(scale(shading_normal, dot(view_vec, shading_normal)*2f32), view_vec);
 	let rcolor = if reflectivity > 0.001f32 { color_probe( reflection ) } else { vec3(0f32,0f32,0f32) };
 	
-	let mut ambient = vec3(0.5f32,0.5f32,0.5f32);
+	let mut ambient;
+	//ambient = vec3(0.5f32,0.5f32,0.5f32);
+
 	/*let mut ao = 0f32;
 	let rot_to_up = rotate_to_up(n_face);
 	const NUM_AO_SAMPLES: uint = 5u;
@@ -439,7 +441,7 @@ fn shade(
 		sample_cosine_hemisphere( rnd, gi_normal ) { |sample_vec|				
 			ambient = add( ambient, color_probe( sample_vec ) );	
 		};
-		ambient = scale(ambient, 1f32 / ((NUM_GI_SAMPLES_SQRT * NUM_GI_SAMPLES_SQRT) as f32 * f32::consts::pi )); 
+		ambient = scale(ambient, 1f32 / (((NUM_GI_SAMPLES_SQRT * NUM_GI_SAMPLES_SQRT) as f32) * f32::consts::pi )); 
 	}
 	
 	lerp( mul(color,add(direct_light, ambient)), rcolor, reflectivity)
@@ -595,7 +597,7 @@ fn generate_raytraced_image(
 	height: uint,
 	sample_grid_size: uint) -> [color] 
 {	
-	let sample_coverage_inv = 1f32 / sample_grid_size as f32;
+	let sample_coverage_inv = 1f32 / (sample_grid_size as f32);
 	let mut rnd = get_rand_env();
 	
 	let lights = [ 	make_light(vec3(-3f32, 3f32, 0f32),10f32, 0.3f32, vec3(1f32,1f32,1f32)) ]; //,

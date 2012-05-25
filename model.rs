@@ -23,7 +23,7 @@ enum kd_tree_node {
 fn find_split_plane( distances: [f32], indices: [uint], faces: [uint] ) -> f32 {
 	
 	let mut face_distances = [];
-	for f in faces {
+	for faces.each {|f|
 		face_distances += [distances[indices[f*3u]]]; 
 		face_distances += [distances[indices[f*3u+1u]]];
 		face_distances += [distances[indices[f*3u+2u]]];
@@ -42,7 +42,7 @@ fn split_triangles( splitter: f32, distances: [f32], indices: [uint], faces: [ui
 	let mut l = [];
 	let mut r = [];
 	
-	for f in faces {
+	for faces.each {|f|
 		let d0 = distances[indices[f*3u   ]];
 		let d1 = distances[indices[f*3u+1u]];
 		let d2 = distances[indices[f*3u+2u]];
@@ -69,10 +69,10 @@ fn build_leaf(
 	faces: [uint]
 ) -> uint {
 
-	let next_face_ix = vec::len(new_indices) / 3u;
-	vec::push(kd_tree_nodes, leaf( next_face_ix, vec::len(faces) ));
+	let next_face_ix : u32 = (vec::len(new_indices) as u32) / 3u32;
+	vec::push(kd_tree_nodes, leaf( next_face_ix, (vec::len(faces) as u32) ));
 	
-	for f in faces {
+	for faces.each {|f|
 		new_indices += [ indices[f*3u], indices[f*3u+1u], indices[f*3u+2u] ];
 	}
 	ret vec::len(kd_tree_nodes) - 1u;
@@ -136,7 +136,7 @@ fn build_kd_tree(
 	
 	// allocate node from nodes-array, and recursively build children
 	let ix = vec::len(kd_tree_nodes);
-	vec::push( kd_tree_nodes, node(axis,0f32,0u));
+	vec::push( kd_tree_nodes, node(axis,0f32,0u32));
 	
 	build_kd_tree( 
 		kd_tree_nodes,
@@ -165,7 +165,7 @@ fn build_kd_tree(
 		r 
 	);
 			
-	kd_tree_nodes[ix] = node(axis, s as f32, right_child_ix);
+	kd_tree_nodes[ix] = node(axis, s as f32, right_child_ix as u32);
 	
 	ret ix;
 }
@@ -174,7 +174,7 @@ fn count_kd_tree_nodes( t: kd_tree ) -> {depth:uint, count:uint} {
 	alt t.nodes[t.root] {
 		node(_,_,r) {
 			let {depth:d0,count:c0} = count_kd_tree_nodes( {root: t.root+1u with t} );
-			let {depth:d1,count:c1} = count_kd_tree_nodes( {root: r with t} );
+			let {depth:d1,count:c1} = count_kd_tree_nodes( {root: (r as uint) with t} );
 			ret {depth: uint::max(d0, d1)+1u, count: c0+c1+1u };		
 		}
 		leaf(_, _) {
@@ -184,8 +184,6 @@ fn count_kd_tree_nodes( t: kd_tree ) -> {depth:uint, count:uint} {
 }
 
 fn read_mesh(fname: str) -> mesh {
-        import iter::iterable;
-	
 	io::print("Reading model file...");
 	let polys = read_polysoup( fname );
 	
@@ -194,11 +192,16 @@ fn read_mesh(fname: str) -> mesh {
 	// just create a vector of 0..N-1 as our face array
 	let max_tri_ix = vec::len(polys.indices)/3u -1u;
 	check( uint::le(0u, max_tri_ix) );
-	let faces = iter::to_vec(uint::range(0u, max_tri_ix, _));
+   let mut faces = [];
+   let mut fii = 0u;
+   while fii < max_tri_ix {
+      vec::push(faces, fii);
+      fii += 1u
+   }
 
 	let mut aabbmin = vec3(f32::infinity, f32::infinity, f32::infinity);
 	let mut aabbmax = vec3(f32::neg_infinity, f32::neg_infinity, f32::neg_infinity);
-	for v in polys.vertices {
+	for polys.vertices.each {|v|
 		aabbmin = math3d::min(v, aabbmin);
 		aabbmax = math3d::max(v, aabbmax);
 	}
@@ -209,7 +212,7 @@ fn read_mesh(fname: str) -> mesh {
 	let mut transformed_verts = [];	
 	
 
-	for v in polys.vertices {
+	for polys.vertices.each {|v|
 		transformed_verts += [scale(sub(v, offset), downscale)];
 	}
 	
@@ -221,7 +224,7 @@ fn read_mesh(fname: str) -> mesh {
 	let mut ydists = [];
 	let mut zdists = [];
 	
-	for v in transformed_verts {
+	for transformed_verts.each {|v|
 		xdists += [v.x];
 		ydists += [v.y];
 		zdists += [v.z];
@@ -311,7 +314,7 @@ fn read_polysoup(fname: str) -> polysoup {
 										(i0,i2,i3) ];
 				}
 				
-				for t in face_triangles {
+				for face_triangles.each {|t|
 					let (i0,i1,i2) = t;
 					
 					indices += [i0,i1,i2];
