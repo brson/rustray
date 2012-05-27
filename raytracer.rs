@@ -10,8 +10,8 @@ fn for_each_pixel( width: uint, height: uint, f : fn (x: uint, y: uint) -> color
 	let mut img_pixels = [];
 
 
-	uint::range( 0u, height ) { |row|	
-		uint::range(0u, width) { |column|
+	for uint::range( 0u, height ) { |row|	
+		for uint::range(0u, width) { |column|
 			img_pixels += [f(column,row)];				
 		}
 	}
@@ -43,8 +43,8 @@ fn get_rand_env() -> rand_env{
 	
 	let mut hemicos_samples = [];
 	
-	uint::range(0u, NUM_GI_SAMPLES_SQRT) { |x|
-		uint::range(0u, NUM_GI_SAMPLES_SQRT) { |y|	
+	for uint::range(0u, NUM_GI_SAMPLES_SQRT) { |x|
+		for uint::range(0u, NUM_GI_SAMPLES_SQRT) { |y|	
 			let (u,v) = (	( (x as f32) + gen.gen_f32() ) / (NUM_GI_SAMPLES_SQRT as f32),
 							( (y as f32) + gen.gen_f32() ) / (NUM_GI_SAMPLES_SQRT as f32) );
 			hemicos_samples += [cosine_hemisphere_sample(u,v)];
@@ -106,7 +106,7 @@ fn sample_stratified_2d( rnd: rand_env, m: uint, n : uint, body: fn(f32,f32) ) {
 	let n_inv = 1f32/(n as f32);	
 	
 	let start_offset = rnd.rng.next();
-	uint::range( 0u, m ) { |samplex|
+	for uint::range( 0u, m ) { |samplex|
 		// sample one "row" of 2d floats
 		let mut sampley = 0u;
 		sample_floats_2d_offset( (start_offset as uint) + (n*samplex as uint), rnd, n ) { |u,v|	
@@ -325,7 +325,7 @@ fn trace_soup( polys: model::polysoup, r: ray) -> option<(hit_result, uint)>{
 	
 	let mut res : option<(hit_result, uint)> = option::none;
 	
-	uint::range( 0u, vec::len( polys.indices ) / 3u) { |tri_ix|
+	for uint::range( 0u, vec::len( polys.indices ) / 3u) { |tri_ix|
 		let tri = get_triangle(polys,tri_ix);
 
 		let new_hit = ray_triangle_intersect( r, tri );
