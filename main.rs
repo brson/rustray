@@ -18,7 +18,7 @@ fn write_ppm( fname: str, width: uint, height: uint, pixels: [color] ){
 	let writer = result::get( io::file_writer( fname, [io::create, io::truncate] ) );
 
 	writer.write_str(#fmt("P6\n%u %u\n255\n", width, height));
-	for pixels.each {|pixel|
+	for pixels.each |pixel| {
 		writer.write([pixel.r, pixel.g, pixel.b]);
 	};
 }

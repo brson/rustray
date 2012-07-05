@@ -10,8 +10,8 @@ fn for_each_pixel( width: uint, height: uint, f : fn (x: uint, y: uint) -> color
 	let mut img_pixels = [];
 
 
-	for uint::range( 0u, height ) { |row|	
-		for uint::range(0u, width) { |column|
+	for uint::range( 0u, height ) |row| {
+		for uint::range(0u, width) |column| {
 			img_pixels += [f(column,row)];				
 		}
 	}
@@ -34,7 +34,7 @@ type rand_env = { rng: rand::rng, floats: [f32], disk_samples: [(f32,f32)], hemi
 fn get_rand_env() -> rand_env{
 	let gen = rand::rng();	
 	
-	let disk_samples = vec::from_fn(513u) {|_x| 
+	let disk_samples = do vec::from_fn(513u) |_x| {
 		// compute random position on light disk
 		let r_sqrt = f32::sqrt(gen.gen_f32());
 		let theta = gen.gen_f32() * 2f32 * f32::consts::pi;
@@ -43,8 +43,8 @@ fn get_rand_env() -> rand_env{
 	
 	let mut hemicos_samples = [];
 	
-	for uint::range(0u, NUM_GI_SAMPLES_SQRT) { |x|
-		for uint::range(0u, NUM_GI_SAMPLES_SQRT) { |y|	
+	for uint::range(0u, NUM_GI_SAMPLES_SQRT) |x| {
+		for uint::range(0u, NUM_GI_SAMPLES_SQRT) |y| {
 			let (u,v) = (	( (x as f32) + gen.gen_f32() ) / (NUM_GI_SAMPLES_SQRT as f32),
 							( (y as f32) + gen.gen_f32() ) / (NUM_GI_SAMPLES_SQRT as f32) );
 			hemicos_samples += [cosine_hemisphere_sample(u,v)];
@@ -52,7 +52,7 @@ fn get_rand_env() -> rand_env{
 	};	
 	
 	{ 	rng: gen,	
-		floats: vec::from_fn(513u, {|_x| gen.gen_f32() } ),
+		floats: vec::from_fn(513u, |_x| gen.gen_f32() ),
 		disk_samples: disk_samples,
 		hemicos_samples: hemicos_samples }	
 }
@@ -70,7 +70,7 @@ fn sample_floats( rnd: rand_env, num: uint, body: fn(f32) ) {
 #[incline(always)]
 fn sample_floats_2d_offset( offset: uint, rnd: rand_env, num: uint, body: fn(f32,f32) ) {
 	let mut ix = offset % vec::len(rnd.floats);
-	iter::repeat(num) {	||	
+	for iter::repeat(num) {
 		let r1 = rnd.floats[ix];
 		ix = (ix + 1u) % vec::len(rnd.floats);
 		let r2 = rnd.floats[ix];
@@ -86,7 +86,7 @@ fn sample_disk( rnd: rand_env, num: uint, body: fn(f32,f32) ){
 		body(0f32,0f32);
 	} else {
 		let mut ix = (rnd.rng.next() as uint) % vec::len(rnd.disk_samples); // start at random location
-		iter::repeat(num) { ||		
+		for iter::repeat(num) {
 			let (u,v) = rnd.disk_samples[ix];
 			body(u,v);		
 			ix = (ix + 1u) % vec::len(rnd.disk_samples);
@@ -106,10 +106,10 @@ fn sample_stratified_2d( rnd: rand_env, m: uint, n : uint, body: fn(f32,f32) ) {
 	let n_inv = 1f32/(n as f32);	
 	
 	let start_offset = rnd.rng.next();
-	for uint::range( 0u, m ) { |samplex|
+	for uint::range( 0u, m ) |samplex| {
 		// sample one "row" of 2d floats
 		let mut sampley = 0u;
-		sample_floats_2d_offset( (start_offset as uint) + (n*samplex as uint), rnd, n ) { |u,v|	
+		do sample_floats_2d_offset( (start_offset as uint) + (n*samplex as uint), rnd, n ) |u,v| {
 			body( 	((samplex as f32) + u) * m_inv, 
 					((sampley as f32) + v) * n_inv );
 			sampley += 1u;
@@ -122,7 +122,7 @@ fn sample_cosine_hemisphere( rnd: rand_env, n: vec3, body: fn(vec3) ) {
 	let rot_to_up = rotate_to_up(n);
 	let random_rot = rotate_y( rnd.floats[ rnd.rng.next() as uint % vec::len(rnd.floats) ] ); // random angle about y
 	let m = mul_mtx33(rot_to_up, random_rot);
-	for rnd.hemicos_samples.each {|s|
+        for rnd.hemicos_samples.each |s| {
 		body(transform(m,s));
 	}
 }
@@ -325,7 +325,7 @@ fn trace_soup( polys: model::polysoup, r: ray) -> option<(hit_result, uint)>{
 	
 	let mut res : option<(hit_result, uint)> = option::none;
 	
-	for uint::range( 0u, vec::len( polys.indices ) / 3u) { |tri_ix|
+	for uint::range( 0u, vec::len( polys.indices ) / 3u) |tri_ix| {
 		let tri = get_triangle(polys,tri_ix);
 
 		let new_hit = ray_triangle_intersect( r, tri );
@@ -355,7 +355,7 @@ fn make_light( pos: vec3, strength: f32, radius: f32, color: vec3 ) -> light {
 fn direct_lighting( lights: [light], pos: vec3, n: vec3, view_vec: vec3, rnd: rand_env, depth: uint, occlusion_probe: fn(vec3) -> bool ) -> vec3 {
 
 	let mut direct_light = vec3(0f32,0f32,0f32);
-	for lights.each {|l|
+	for lights.each |l| {
 	
 		// compute shadow contribution
 		let mut shadow_contrib = 0f32;
@@ -369,7 +369,7 @@ fn direct_lighting( lights: [light], pos: vec3, n: vec3, view_vec: vec3, rnd: ra
 			
 		let rot_to_up = rotate_to_up(normalized(sub(pos,l.pos)));
 		let shadow_sample_weight = 1f32 / (num_samples as f32);
-		sample_disk(rnd,num_samples) {|u,v|		// todo: stratify this
+		do sample_disk(rnd,num_samples) |u,v| {		// todo: stratify this
 
 			// scale and rotate disk sample, and position it at the light's location
 			let sample_pos = add(l.pos,transform(rot_to_up, vec3(u*l.radius,0f32,v*l.radius) ));			
@@ -406,7 +406,7 @@ fn direct_lighting( lights: [light], pos: vec3, n: vec3, view_vec: vec3, rnd: ra
 
 #[inline(always)] 
 fn shade(
-	pos: vec3, n: vec3, n_face: vec3, r: ray, color: vec3, reflectivity: f32, lights: [light], &rnd: rand_env, depth: uint,
+	pos: vec3, n: vec3, n_face: vec3, r: ray, color: vec3, reflectivity: f32, lights: [light], rnd: rand_env, depth: uint,
 	occlusion_probe: fn(vec3) -> bool, 
 	color_probe: fn(vec3) -> vec3 ) -> vec3 {
 
@@ -438,7 +438,7 @@ fn shade(
 	let gi_normal = if USE_SMOOTH_NORMALS_FOR_GI { n } else { n_face };
 	ambient = vec3(0f32,0f32,0f32);
 	if depth == 0u && NUM_GI_SAMPLES_SQRT > 0u {		
-		sample_cosine_hemisphere( rnd, gi_normal ) { |sample_vec|				
+		do sample_cosine_hemisphere( rnd, gi_normal ) |sample_vec| {
 			ambient = add( ambient, color_probe( sample_vec ) );	
 		};
 		ambient = scale(ambient, 1f32 / (((NUM_GI_SAMPLES_SQRT * NUM_GI_SAMPLES_SQRT) as f32) * f32::consts::pi )); 
@@ -555,7 +555,7 @@ fn trace_ray_shadow( r : ray, mesh : model::mesh, mint: f32, maxt: f32) -> bool 
 
 
 #[inline(always)] 
-fn get_color( r: ray, mesh: model::mesh, lights: [light], &rnd: rand_env, tmin: f32, tmax: f32, depth: uint) -> vec3 {
+fn get_color( r: ray, mesh: model::mesh, lights: [light], rnd: rand_env, tmin: f32, tmax: f32, depth: uint) -> vec3 {
 	let theta = dot( vec3(0f32,1f32,0f32), r.dir );
 	let default_color = vec3(clamp(1f32-theta*4f32,0f32,0.75f32)+0.25f32, clamp(0.5f32-theta*3f32,0f32,0.75f32)+0.25f32, theta);	// fake sky colour
 	
@@ -569,11 +569,11 @@ fn get_color( r: ray, mesh: model::mesh, lights: [light], &rnd: rand_env, tmin: 
 			let surface_origin = add(pos, scale(n_face, 0.000002f32));
 
 			shade(pos, n, n_face, r, color, reflectivity, lights, rnd, depth, 
-			{|occlusion_vec| 
+			|occlusion_vec| {
 				let occlusion_ray = {origin: surface_origin, dir: occlusion_vec};
 				trace_ray_shadow(occlusion_ray, mesh, 0f32, 1f32)
 			}, 
-			{|ray_dir| 
+			|ray_dir| {
 				let reflection_ray = {origin: surface_origin, dir: normalized(ray_dir)};
 				get_color(reflection_ray, mesh, lights, rnd, tmin, tmax, depth + 1u)
 			})
@@ -598,15 +598,15 @@ fn generate_raytraced_image(
 	sample_grid_size: uint) -> [color] 
 {	
 	let sample_coverage_inv = 1f32 / (sample_grid_size as f32);
-	let mut rnd = get_rand_env();
+	let rnd = get_rand_env();
 	
 	let lights = [ 	make_light(vec3(-3f32, 3f32, 0f32),10f32, 0.3f32, vec3(1f32,1f32,1f32)) ]; //,
 					//make_light(vec3(0f32, 0f32, 0f32), 10f32, 0.25f32, vec3(1f32,1f32,1.0f32))];
 	
-	for_each_pixel( width, height, {|x,y|
+	for_each_pixel( width, height, |x,y| {
 		let mut shaded_color = vec3(0f32,0f32,0f32);
 		
-		sample_stratified_2d(rnd, sample_grid_size, sample_grid_size){ |u,v|
+		do sample_stratified_2d(rnd, sample_grid_size, sample_grid_size) |u,v| {
 			let sample = if sample_grid_size == 1u {
 								(0f32,0f32)
 							} else {

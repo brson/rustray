@@ -23,7 +23,7 @@ enum kd_tree_node {
 fn find_split_plane( distances: [f32], indices: [uint], faces: [uint] ) -> f32 {
 	
 	let mut face_distances = [];
-	for faces.each {|f|
+	for faces.each |f| {
 		face_distances += [distances[indices[f*3u]]]; 
 		face_distances += [distances[indices[f*3u+1u]]];
 		face_distances += [distances[indices[f*3u+2u]]];
@@ -42,7 +42,7 @@ fn split_triangles( splitter: f32, distances: [f32], indices: [uint], faces: [ui
 	let mut l = [];
 	let mut r = [];
 	
-	for faces.each {|f|
+	for faces.each |f| {
 		let d0 = distances[indices[f*3u   ]];
 		let d1 = distances[indices[f*3u+1u]];
 		let d2 = distances[indices[f*3u+2u]];
@@ -72,7 +72,7 @@ fn build_leaf(
 	let next_face_ix : u32 = (vec::len(new_indices) as u32) / 3u32;
 	vec::push(kd_tree_nodes, leaf( next_face_ix, (vec::len(faces) as u32) ));
 	
-	for faces.each {|f|
+	for faces.each |f| {
 		new_indices += [ indices[f*3u], indices[f*3u+1u], indices[f*3u+2u] ];
 	}
 	ret vec::len(kd_tree_nodes) - 1u;
@@ -201,7 +201,7 @@ fn read_mesh(fname: str) -> mesh {
 
 	let mut aabbmin = vec3(f32::infinity, f32::infinity, f32::infinity);
 	let mut aabbmax = vec3(f32::neg_infinity, f32::neg_infinity, f32::neg_infinity);
-	for polys.vertices.each {|v|
+	for polys.vertices.each |v| {
 		aabbmin = math3d::min(v, aabbmin);
 		aabbmax = math3d::max(v, aabbmax);
 	}
@@ -212,7 +212,7 @@ fn read_mesh(fname: str) -> mesh {
 	let mut transformed_verts = [];	
 	
 
-	for polys.vertices.each {|v|
+	for polys.vertices.each |v| {
 		transformed_verts += [scale(sub(v, offset), downscale)];
 	}
 	
@@ -224,7 +224,7 @@ fn read_mesh(fname: str) -> mesh {
 	let mut ydists = [];
 	let mut zdists = [];
 	
-	for transformed_verts.each {|v|
+	for transformed_verts.each |v| {
 		xdists += [v.x];
 		ydists += [v.y];
 		zdists += [v.z];
@@ -314,7 +314,7 @@ fn read_polysoup(fname: str) -> polysoup {
 										(i0,i2,i3) ];
 				}
 				
-				for face_triangles.each {|t|
+				for face_triangles.each |t| {
 					let (i0,i1,i2) = t;
 					
 					indices += [i0,i1,i2];
@@ -347,7 +347,7 @@ fn read_polysoup(fname: str) -> polysoup {
 
 	ret {	vertices: vertices, 
 			indices: indices, 
-			normals: vec::map( vec::from_mut(vert_normals), {|v| normalized(v)}) };
+			normals: vec::map( vec::from_mut(vert_normals), |v| normalized(v) ) };
 }
 
 
