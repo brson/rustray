@@ -14,4 +14,4 @@ mod main;
 mod model;
 mod raytracer;
 mod math3d;
-
+mod consts;

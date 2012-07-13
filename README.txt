@@ -3,6 +3,9 @@ January 2012
 
 A raytracing proof-of-concept in Rust
 
+COMPILING:
+   $ rustc -W no-old-vecs rustray.rc
+
 DEMO:
    $ wget http://groups.csail.mit.edu/graphics/classes/6.837/F03/models/cow-nonormals.obj
    $ ./rustray cow-nonormals.obj
@@ -15,5 +18,3 @@ DEMO:
    Tracing rays... Done!
    Writing "./oput.ppm"...Done!
    $ gimp oput.ppm
-
-
