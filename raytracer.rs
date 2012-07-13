@@ -1,7 +1,7 @@
 import std::*;
 import math3d::*;
 
-import main::*; // for the consts.. ugh... make the constants go away
+import consts::*; // for the consts.. ugh... make the constants go away
 
 type color = { r:u8, g:u8, b:u8 };
 
