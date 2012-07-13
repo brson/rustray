@@ -274,7 +274,7 @@ fn read_polysoup(fname: str) -> polysoup {
 	while !reader.eof() {
 		let line : str = reader.read_line();
 		if str::is_empty(line) {
-			cont;
+			again;
 		}		
 	
 		let mut num_texcoords = 0u;
