@@ -1,11 +1,10 @@
-import io::writer_util;
-import io::writer;
-import consts::*;
-import raytracer::*;
+use io::{Writer, WriterUtil};
+use consts::*;
+use raytracer::*;
 
-fn write_ppm( fname: str, width: uint, height: uint, pixels: [color] ){
+fn write_ppm( fname: &str, width: uint, height: uint, pixels: &[color] ){
 
-    let writer = result::get( io::file_writer( fname, [io::create, io::truncate] ) );
+    let writer = result::get( &io::file_writer( &Path(fname), [io::Create, io::Truncate] ) );
 
     writer.write_str(#fmt("P6\n%u %u\n255\n", width, height));
     for pixels.each |pixel| {
@@ -13,7 +12,7 @@ fn write_ppm( fname: str, width: uint, height: uint, pixels: [color] ){
     };
 }
 
-fn main( args: [str] )
+fn main( ++args: ~[~str] )
 {
     if vec::len(args) != 2u {
         io::println("Usage: rustray OBJ");
@@ -29,7 +28,7 @@ fn main( args: [str] )
     let start = std::time::precise_time_s();
 
 
-    io::println("Reading \"" + args[1] + "\"...");
+    io::println(~"Reading \"" + args[1] + "\"...");
     let model = model::read_mesh( args[1] );
     let {depth,count} = model::count_kd_tree_nodes( model.kd_tree );
 
@@ -44,7 +43,7 @@ fn main( args: [str] )
     io::println("Done!");
 
     let outputfile = "./oput.ppm";
-    io::print("Writing \"" + outputfile + "\"...");
+    io::print(~"Writing \"" + outputfile + "\"...");
     write_ppm( outputfile, WIDTH, HEIGHT, pixels );
     io::println("Done!");
 
