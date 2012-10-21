@@ -12,8 +12,11 @@ fn write_ppm( fname: &str, width: uint, height: uint, pixels: &[color] ){
     };
 }
 
-fn main( ++args: ~[~str] )
+fn main()
 {
+    // Get command line args
+    let args = os::args();
+
     if vec::len(args) != 2u {
         io::println("Usage: rustray OBJ");
         io::println("");
@@ -30,7 +33,7 @@ fn main( ++args: ~[~str] )
 
     io::println(~"Reading \"" + args[1] + "\"...");
     let model = model::read_mesh( args[1] );
-    let {depth,count} = model::count_kd_tree_nodes( model.kd_tree );
+    let {depth,count} = model::count_kd_tree_nodes( copy model.kd_tree );
 
     io::println(#fmt("Done.\nLoaded model.\n\tVerts: %u, Tris: %u\n\tKD-tree depth: %u, #nodes: %u",
                 vec::len(model.polys.vertices),

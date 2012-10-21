@@ -297,18 +297,18 @@ fn read_polysoup(fname: &str) -> polysoup {
                 let mut face_triangles = ~[];
 
                 if vec::len(tokens) == 4u {
-                    let (i0,i1,i2) = (	parse_faceindex(tokens[1]),
-                                        parse_faceindex(tokens[2]),
-                                        parse_faceindex(tokens[3]) );
+                    let (i0,i1,i2) = (	parse_faceindex(copy tokens[1]),
+                                        parse_faceindex(copy tokens[2]),
+                                        parse_faceindex(copy tokens[3]) );
 
                     face_triangles.push((i0, i1, i2));
                 } else {
                     assert vec::len(tokens) == 5u;
                     // quad, triangulate
-                    let (i0,i1,i2,i3) = (	parse_faceindex(tokens[1]),
-                                            parse_faceindex(tokens[2]),
-                                            parse_faceindex(tokens[3]),
-                                            parse_faceindex(tokens[4]) );
+                    let (i0,i1,i2,i3) = (	parse_faceindex(copy tokens[1]),
+                                            parse_faceindex(copy tokens[2]),
+                                            parse_faceindex(copy tokens[3]),
+                                            parse_faceindex(copy tokens[4]) );
 
                     face_triangles.push((i0,i1,i2));
                     face_triangles.push((i0,i2,i3));
