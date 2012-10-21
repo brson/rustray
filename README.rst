@@ -16,20 +16,21 @@ Compiling
 
    $ rustc rustray.rc
 
-Tuning
-------
+Quality Settings
+----------------
 
 Now raytracing parameters are hard-coded in ``consts.rs``,
 just edit it and re-compile ``rustray`` again.
 
 Demo
 ----
+This might take some time even on the strong machine, so consider choosing more
+simple model or adjust quality settings.
 ::
 
    $ wget http://groups.csail.mit.edu/graphics/classes/6.837/F03/models/cow-nonormals.obj
    $ ./rustray cow-nonormals.obj
    Reading "cow-nonormals.obj"...
-   Unrecognized line in .obj file: # The units used in this file are centimeters.
    Building kd-tree... Done.
    Loaded model.
        Verts: 4583, Tris: 5804
