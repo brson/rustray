@@ -1,12 +1,31 @@
-rustray
-January 2012
+Rustray
+=======
+
+October 2012
 
 A raytracing proof-of-concept in Rust
 
-COMPILING:
-   $ rustc -W no-old-vecs rustray.rc
+Requirements
+------------
 
-DEMO:
+- Rust-0.4
+
+Compiling
+---------
+::
+
+   $ rustc rustray.rc
+
+Tuning
+------
+
+Now raytracing parameters are hard-coded in ``consts.rs``,
+just edit it and re-compile ``rustray`` again.
+
+Demo
+----
+::
+
    $ wget http://groups.csail.mit.edu/graphics/classes/6.837/F03/models/cow-nonormals.obj
    $ ./rustray cow-nonormals.obj
    Reading "cow-nonormals.obj"...
