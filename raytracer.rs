@@ -108,7 +108,7 @@ fn sample_stratified_2d( rnd: rand_env, m: uint, n : uint, body: fn(f32,f32) ) {
     for uint::range( 0u, m ) |samplex| {
         // sample one "row" of 2d floats
         let mut sampley = 0u;
-        do sample_floats_2d_offset( (start_offset as uint) + (n*samplex as uint), rnd, n ) |u,v| {
+        do sample_floats_2d_offset( (start_offset as uint) + (n*samplex as uint), copy rnd, n ) |u,v| {
             body(   ((samplex as f32) + u) * m_inv,
                     ((sampley as f32) + v) * n_inv );
             sampley += 1u;
@@ -178,7 +178,7 @@ fn trace_kd_tree(
                 let mut tri_index : u32 = tri_begin;
                 while tri_index < tri_begin+tri_count {
 
-                    let t = get_triangle( polys, tri_index as uint );
+                    let t = get_triangle( copy polys, tri_index as uint );
                     let new_hit_result = ray_triangle_intersect( r, t );
 
                     match (res, new_hit_result){
@@ -269,7 +269,7 @@ fn trace_kd_tree_shadow(
 
                 let mut tri_index = tri_begin;
                 while tri_index < tri_begin + tri_count {
-                    let t = get_triangle( polys, tri_index as uint);
+                    let t = get_triangle( copy polys, tri_index as uint);
                     if option::is_some( &ray_triangle_intersect( r, t ) ) {
                         return true;
                     }
@@ -325,7 +325,7 @@ fn trace_soup( polys: model::polysoup, r: ray) -> Option<(hit_result, uint)>{
     let mut res : Option<(hit_result, uint)> = option::None;
 
     for uint::range( 0u, vec::len( polys.indices ) / 3u) |tri_ix| {
-        let tri = get_triangle(polys,tri_ix);
+        let tri = get_triangle(copy polys, tri_ix);
 
         let new_hit = ray_triangle_intersect( r, tri );
 
@@ -368,7 +368,7 @@ fn direct_lighting( lights: &[light], pos: vec3, n: vec3, view_vec: vec3, rnd: r
 
         let rot_to_up = rotate_to_up(normalized(sub(pos,l.pos)));
         let shadow_sample_weight = 1f32 / (num_samples as f32);
-        do sample_disk(rnd,num_samples) |u,v| {		// todo: stratify this
+        do sample_disk(copy rnd ,num_samples) |u,v| {		// todo: stratify this
 
             // scale and rotate disk sample, and position it at the light's location
             let sample_pos = add(l.pos,transform(rot_to_up, vec3(u*l.radius,0f32,v*l.radius) ));
@@ -414,7 +414,7 @@ fn shade(
     // pass in n or n_face for smooth/flat shading
     let shading_normal = if USE_SMOOTH_NORMALS_FOR_DIRECT_LIGHTING { n } else { n_face };
 
-    let direct_light = direct_lighting(lights, pos, shading_normal, view_vec, rnd, depth, occlusion_probe);
+    let direct_light = direct_lighting(lights, pos, shading_normal, view_vec, copy rnd, depth, occlusion_probe);
     let reflection = sub(scale(shading_normal, dot(view_vec, shading_normal)*2f32), view_vec);
     let rcolor = if reflectivity > 0.001f32 { color_probe( reflection ) } else { vec3(0f32,0f32,0f32) };
 
@@ -493,9 +493,9 @@ fn trace_ray( r : ray, mesh : model::mesh, mint: f32, maxt: f32) -> Option<inter
 
     // trace against scene
     let trace_result = if use_kd_tree {
-        trace_kd_tree( mesh.polys, mesh.kd_tree.nodes, mesh.kd_tree.root, r, recip( r.dir ), mint, new_maxt )
+        trace_kd_tree( copy mesh.polys, copy mesh.kd_tree.nodes, mesh.kd_tree.root, r, recip( r.dir ), mint, new_maxt )
     } else {
-        trace_soup( mesh.polys, r)
+        trace_soup( copy mesh.polys, r)
     };
 
     match trace_result {
@@ -549,7 +549,7 @@ fn trace_ray_shadow( r : ray, mesh : model::mesh, mint: f32, maxt: f32) -> bool 
     }
 
     // trace against scene
-    trace_kd_tree_shadow( mesh.polys, mesh.kd_tree.nodes, mesh.kd_tree.root, r, recip( r.dir ), mint, new_maxt )
+    trace_kd_tree_shadow( copy mesh.polys, copy mesh.kd_tree.nodes, mesh.kd_tree.root, r, recip( r.dir ), mint, new_maxt )
 }
 
 
@@ -563,18 +563,18 @@ fn get_color( r: ray, mesh: model::mesh, lights: &[light], rnd: rand_env, tmin: 
         return default_color;
     }
 
-    match trace_ray( r, mesh, tmin, tmax ) {
+    match trace_ray( r, copy mesh, tmin, tmax ) {
         option::Some({pos,n,n_face,color,reflectivity}) => {
             let surface_origin = add(pos, scale(n_face, 0.000002f32));
 
-            shade(pos, n, n_face, r, color, reflectivity, lights, rnd, depth,
+            shade(pos, n, n_face, r, color, reflectivity, lights, copy rnd, depth,
             |occlusion_vec| {
                 let occlusion_ray = {origin: surface_origin, dir: occlusion_vec};
-                trace_ray_shadow(occlusion_ray, mesh, 0f32, 1f32)
+                trace_ray_shadow(occlusion_ray, copy mesh, 0f32, 1f32)
             },
             |ray_dir| {
                 let reflection_ray = {origin: surface_origin, dir: normalized(ray_dir)};
-                get_color(reflection_ray, mesh, lights, rnd, tmin, tmax, depth + 1u)
+                get_color(reflection_ray, copy mesh, lights, copy rnd, tmin, tmax, depth + 1u)
             })
 
         }
@@ -605,7 +605,7 @@ pub fn generate_raytraced_image(
     for_each_pixel( width, height, |x,y| {
         let mut shaded_color = vec3(0f32,0f32,0f32);
 
-        do sample_stratified_2d(rnd, sample_grid_size, sample_grid_size) |u,v| {
+        do sample_stratified_2d(copy rnd, sample_grid_size, sample_grid_size) |u,v| {
             let sample = if sample_grid_size == 1u {
                                 (0f32,0f32)
                             } else {
@@ -613,7 +613,7 @@ pub fn generate_raytraced_image(
                             };
 
             let r = get_ray(horizontalFOV, width, height, x, y, sample );
-            shaded_color = add( shaded_color, get_color(r, mesh, lights, rnd, 0f32, f32::infinity, 0u));
+            shaded_color = add( shaded_color, get_color(r, copy mesh, lights, copy rnd, 0f32, f32::infinity, 0u));
         }
 
 
