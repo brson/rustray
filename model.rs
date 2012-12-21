@@ -28,7 +28,7 @@ fn find_split_plane( distances: &[f32], indices: &[uint], faces: &[uint] ) -> f3
         face_distances.push(distances[indices[*f*3u+2u]]);
     }
 
-    let mut sorted_distances = sort::merge_sort( |a,b| *a<*b, face_distances );
+    let mut sorted_distances = sort::merge_sort( face_distances, |a,b| *a<*b );
     let n = vec::len(sorted_distances);
     if n % 2u == 0u {
         sorted_distances[ n/2u ]
@@ -174,7 +174,7 @@ fn build_kd_tree(
 pub fn count_kd_tree_nodes( t: kd_tree ) -> {depth:uint, count:uint} {
     match t.nodes[t.root] {
         node(_,_,r) => {
-            let {depth:d0,count:c0} = count_kd_tree_nodes( {root: t.root+1u, .. t} );
+            let {depth:d0,count:c0} = count_kd_tree_nodes( {root: t.root+1u, .. copy t} );
             let {depth:d1,count:c1} = count_kd_tree_nodes( {root: (r as uint), .. t} );
             return {depth: uint::max(d0, d1)+1u, count: c0+c1+1u };
         }
@@ -261,7 +261,7 @@ fn parse_faceindex(s: ~str) ->  uint {
         }
     };
 
-    option::get(&uint::from_str(ix_str))-1u
+    option::get(uint::from_str(ix_str))-1u
 }
 
 fn read_polysoup(fname: &str) -> polysoup {
@@ -282,9 +282,9 @@ fn read_polysoup(fname: &str) -> polysoup {
 
         if tokens[0] == ~"v"{
             assert vec::len(tokens) == 4u;
-            let v = vec3(	option::get(&float::from_str(tokens[1])) as f32,
-                            option::get(&float::from_str(tokens[2])) as f32,
-                            option::get(&float::from_str(tokens[3])) as f32);
+            let v = vec3(	option::get(float::from_str(tokens[1])) as f32,
+                            option::get(float::from_str(tokens[2])) as f32,
+                            option::get(float::from_str(tokens[3])) as f32);
             assert v.x != f32::NaN;
             assert v.y != f32::NaN;
             assert v.z != f32::NaN;
@@ -328,16 +328,16 @@ fn read_polysoup(fname: &str) -> polysoup {
                     vert_normals[i2] = math3d::add( vert_normals[i2], n );
                 }
             } else {
-                io::println(#fmt("Polygon with %u vertices found. Ignored. Currently rustray only supports 4 vertices", vec::len(tokens) - 1u));
+                io::println(fmt!("Polygon with %u vertices found. Ignored. Currently rustray only supports 4 vertices", vec::len(tokens) - 1u));
             }
         } else if tokens[0] == ~"vt" {
             num_texcoords += 1u;
         } else if tokens[0] != ~"#" {
-            io::println(#fmt("Unrecognized line in .obj file: %s", line));
+            io::println(fmt!("Unrecognized line in .obj file: %s", line));
         }
 
         if num_texcoords > 0u {
-            io::println(#fmt("%u texture coordinates ignored", num_texcoords));
+            io::println(fmt!("%u texture coordinates ignored", num_texcoords));
         }
     }
 

@@ -6,7 +6,7 @@ fn write_ppm( fname: &str, width: uint, height: uint, pixels: &[color] ){
 
     let writer = result::get( &io::file_writer( &Path(fname), [io::Create, io::Truncate] ) );
 
-    writer.write_str(#fmt("P6\n%u %u\n255\n", width, height));
+    writer.write_str(fmt!("P6\n%u %u\n255\n", width, height));
     for pixels.each |pixel| {
         writer.write([pixel.r, pixel.g, pixel.b]);
     };
@@ -35,7 +35,7 @@ fn main()
     let model = model::read_mesh( args[1] );
     let {depth,count} = model::count_kd_tree_nodes( copy model.kd_tree );
 
-    io::println(#fmt("Done.\nLoaded model.\n\tVerts: %u, Tris: %u\n\tKD-tree depth: %u, #nodes: %u",
+    io::println(fmt!("Done.\nLoaded model.\n\tVerts: %u, Tris: %u\n\tKD-tree depth: %u, #nodes: %u",
                 vec::len(model.polys.vertices),
                 vec::len(model.polys.indices)/3u,
                 depth, count));
@@ -51,5 +51,5 @@ fn main()
     io::println("Done!");
 
     let end = std::time::precise_time_s();
-    io::print(#fmt("Total time: %3.3fs, of which tracing: %3.3f\n", end - start, end - start_tracing) );
+    io::print(fmt!("Total time: %3.3fs, of which tracing: %3.3f\n", end - start, end - start_tracing) );
 }

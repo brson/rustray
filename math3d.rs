@@ -1,14 +1,5 @@
+#[deriving_eq]
 pub struct vec3 { x:f32, y:f32, z:f32 }
-
-impl vec3: cmp::Eq {
-    pure fn eq(other: &vec3) -> bool {
-        self.x == other.x && self.y == other.y && self.z == other.z
-    }
-
-    pure fn ne(other: &vec3) -> bool {
-        !self.eq(other)
-    }
-}
 
 pub type mtx33 = { r0:vec3, r1:vec3, r2:vec3 };
 
