@@ -12,75 +12,75 @@ pub struct mtx33 {
 }
 
 #[inline(always)]
-pub pure fn vec3(_x:f32, _y:f32, _z:f32) -> vec3{
-    vec3 {x:_x, y:_y, z:_z}
+pub fn vec3(x:f32, y:f32, z:f32) -> vec3{
+    vec3 {x:x, y:y, z:z}
 }
 
 #[inline(always)]
-pub pure fn dot(a:vec3, b:vec3) -> f32 {
+pub fn dot(a:vec3, b:vec3) -> f32 {
     a.x*b.x + a.y*b.y + a.z*b.z
 }
 
 #[inline(always)]
-pub pure fn lerp(a:vec3, b:vec3, t:f32) -> vec3{
+pub fn lerp(a:vec3, b:vec3, t:f32) -> vec3{
     add( a, scale(sub(b,a),t) )
 }
 
 #[inline(always)]
-pub pure fn scale(v:vec3, s:f32) -> vec3 {
+pub fn scale(v:vec3, s:f32) -> vec3 {
     vec3 { x:v.x*s, y:v.y*s, z:v.z*s }
 }
 
 #[inline(always)]
-pub pure fn length_sq(v:vec3) -> f32 {
+pub fn length_sq(v:vec3) -> f32 {
     dot(v,v)
 }
 
 #[inline(always)]
-pub pure fn length(v:vec3) -> f32 {
+pub fn length(v:vec3) -> f32 {
     f32::sqrt(length_sq(v))
 }
 
 #[inline(always)]
-pub pure fn normalized(v:vec3) -> vec3 {
+pub fn normalized(v:vec3) -> vec3 {
     scale(v, 1.0f32 / length(v))
 }
 
 #[inline(always)]
-pub pure fn recip(a:vec3) -> vec3{
+pub fn recip(a:vec3) -> vec3{
     vec3(1f32/a.x, 1f32/a.y, 1f32/a.z)
 }
 
 
 #[inline(always)]
-pub pure fn mul(a:vec3, b:vec3) -> vec3{
+pub fn mul(a:vec3, b:vec3) -> vec3{
     vec3(a.x*b.x, a.y*b.y, a.z*b.z)
 }
 
 #[inline(always)]
-pub pure fn add(a:vec3, b:vec3) -> vec3 {
+pub fn add(a:vec3, b:vec3) -> vec3 {
     vec3 {x:a.x+b.x, y:a.y+b.y, z:a.z+b.z}
 }
 
 #[inline(always)]
-pub pure fn sub(a:vec3, b:vec3) -> vec3 {
+pub fn sub(a:vec3, b:vec3) -> vec3 {
     add(a, scale(b, -1.0f32))
 }
 
 #[inline(always)]
-pub pure fn cross(a:vec3, b:vec3) -> vec3 {
+pub fn cross(a:vec3, b:vec3) -> vec3 {
     vec3( a.y*b.z - b.y*a.z,
           a.z*b.x - b.z*a.x,
           a.x*b.y - b.x*a.y)
 }
 
 #[inline(always)]
-pub pure fn min(a: vec3, b: vec3) -> vec3 {
+pub fn min(a: vec3, b: vec3) -> vec3 {
     vec3( f32::fmin(a.x,b.x), f32::fmin(a.y, b.y), f32::fmin(a.z, b.z) )
 }
 
 #[inline(always)]
-pub pure fn max(a: vec3, b: vec3) -> vec3 {
+pub fn max(a: vec3, b: vec3) -> vec3 {
     vec3( f32::fmax(a.x,b.x), f32::fmax(a.y, b.y), f32::fmax(a.z, b.z) )
 }
 
@@ -90,7 +90,7 @@ pub struct HitResult { barycentric: vec3, t: f32 }
 
 pub impl Ray {
     #[inline(always)]
-    pure fn intersect(&self, t: &Triangle) -> Option<HitResult> {
+    fn intersect(&self, t: &Triangle) -> Option<HitResult> {
         let e1 = sub(t.p2,t.p1);
         let e2 = sub(t.p3,t.p1);
         let s1 = cross(self.dir,e2);
@@ -123,7 +123,7 @@ pub impl Ray {
         option::Some( HitResult{barycentric: vec3(b1, b2, 1.0f32-b1-b2), t: t} )
     }
     #[inline(always)]
-    pure fn aabb_check(&self, max_dist: f32, box: aabb ) -> bool {
+    fn aabb_check(&self, max_dist: f32, box: aabb ) -> bool {
         let inv_dir = recip(self.dir);
         let (tx1,tx2,ty1,ty2,tz1,tz2) = (
             (box.min.x - self.origin.x)*inv_dir.x,

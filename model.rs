@@ -27,8 +27,8 @@ pub struct kd_tree {
 }
 
 pub enum kd_tree_node {
-    leaf( u32, u32 ),
-    node( axis, f32, u32 )
+    pub leaf( u32, u32 ),
+    pub node( axis, f32, u32 )
 }
 
 fn find_split_plane( distances: &[f32], indices: &[uint], faces: &[uint] ) -> f32 {
@@ -40,7 +40,7 @@ fn find_split_plane( distances: &[f32], indices: &[uint], faces: &[uint] ) -> f3
         face_distances.push(distances[indices[*f*3u+2u]]);
     }
 
-    let mut sorted_distances = sort::merge_sort( face_distances, |a,b| a<b );
+    let mut sorted_distances = sort::merge_sort( face_distances, |a,b| *a<*b );
     let n = sorted_distances.len();
     if n % 2u == 0u {
         sorted_distances[ n/2u ]
@@ -206,7 +206,8 @@ pub fn read_mesh(fname: &str) -> mesh {
     let downscale = 1.0f32 / length(sub(aabbmax,aabbmin));
     let offset = scale(add(aabbmin, aabbmax), 0.5f32);
 
-    let mut transformed_verts = vec::with_capacity( polys.vertices.len() );
+    let mut transformed_verts = ~[];
+
 
     for polys.vertices.each |v| {
         transformed_verts.push(scale(sub(*v, offset), downscale));
@@ -214,22 +215,25 @@ pub fn read_mesh(fname: &str) -> mesh {
 
     aabbmin = scale(sub(aabbmin, offset), downscale);
     aabbmax = scale(sub(aabbmax, offset), downscale);
+
     // de-mux vertices for easier access later
-    let mut xdists = vec::with_capacity(transformed_verts.len());
-    let mut ydists = vec::with_capacity(transformed_verts.len());
-    let mut zdists = vec::with_capacity(transformed_verts.len());
+    let mut xdists = ~[];
+    let mut ydists = ~[];
+    let mut zdists = ~[];
+
     for transformed_verts.each |v| {
         xdists.push(v.x);
         ydists.push(v.y);
         zdists.push(v.z);
     }
+
     let mut nodes = ~[];
     let mut new_indices = ~[];
     
     let rootnode = build_kd_tree(
                     &mut nodes,
                     &mut new_indices,
-                    50u,
+                    100u,
                     xdists,
                     ydists,
                     zdists,
