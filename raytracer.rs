@@ -1,6 +1,7 @@
 use consts::*; // for the consts.. ugh... make the constants go away
 use math3d::*;
 use model;
+use core::rand::{RngUtil,Rng,task_rng};
 
 use std;
 
@@ -36,7 +37,7 @@ struct rand_env {
 
 #[incline(always)]
 fn get_rand_env() -> rand_env {
-    let gen = rand::task_rng();
+    let gen = task_rng();
 
     let disk_samples = do vec::from_fn(513u) |_x| {
         // compute random position on light disk
