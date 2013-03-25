@@ -246,11 +246,11 @@ pub fn read_mesh(fname: &str) -> mesh {
 }
 
 #[inline(always)]
-fn parse_faceindex(s: ~str) ->  uint {
+fn parse_faceindex(s: &str) ->  uint {
 
     // check for '/', the vertex index is the first
-    let ix_str = match str::find_char(s, '/'){
-        option::Some(slash_ix) => str::substr(s, 0u, slash_ix),
+    let ix_str = match str::find_char(s,'/'){
+        option::Some(slash_ix) => s.substr(0u, slash_ix),
         _ => s
     };
     option::get(uint::from_str(ix_str))-1u
@@ -289,18 +289,18 @@ fn read_polysoup(fname: &str) -> polysoup {
                 let mut face_triangles = ~[];
 
                 if tokens.len() == 4u {
-                    let (i0,i1,i2) = (    parse_faceindex(copy tokens[1]),
-                                        parse_faceindex(copy tokens[2]),
-                                        parse_faceindex(copy tokens[3]) );
+                    let (i0,i1,i2) = (  parse_faceindex(tokens[1]),
+                                        parse_faceindex(tokens[2]),
+                                        parse_faceindex(tokens[3]) );
 
                     face_triangles.push((i0, i1, i2));
                 } else {
                     fail_unless!(tokens.len() == 5u);
                     // quad, triangulate
-                    let (i0,i1,i2,i3) = (    parse_faceindex(copy tokens[1]),
-                                            parse_faceindex(copy tokens[2]),
-                                            parse_faceindex(copy tokens[3]),
-                                            parse_faceindex(copy tokens[4]) );
+                    let (i0,i1,i2,i3) = (   parse_faceindex(tokens[1]),
+                                            parse_faceindex(tokens[2]),
+                                            parse_faceindex(tokens[3]),
+                                            parse_faceindex(tokens[4]) );
 
                     face_triangles.push((i0,i1,i2));
                     face_triangles.push((i0,i2,i3));
