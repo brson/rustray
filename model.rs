@@ -91,7 +91,7 @@ fn build_leaf(
     kd_tree_nodes.len() - 1u
 }
 
-fn build_kd_tree(
+fn build_kd_tree<'r>(
     kd_tree_nodes : &mut ~[kd_tree_node],
     new_indices: &mut ~[uint],
     maxdepth: uint,
@@ -250,10 +250,10 @@ fn parse_faceindex(s: &str) ->  uint {
 
     // check for '/', the vertex index is the first
     let ix_str = match str::find_char(s,'/'){
-        option::Some(slash_ix) => s.substr(0u, slash_ix),
+        Some(slash_ix) => s.substr(0u, slash_ix),
         _ => s
     };
-    option::get(uint::from_str(ix_str))-1u
+    uint::from_str(ix_str).get()-1u
 }
 
 fn read_polysoup(fname: &str) -> polysoup {
@@ -270,13 +270,14 @@ fn read_polysoup(fname: &str) -> polysoup {
         }
 
         let mut num_texcoords = 0u;
-        let tokens = str::split_char(line, ' ');
+        let mut tokens = ~[];
+        for line.each_split_char(' ') |t| { tokens.push(t) }
 
         if tokens[0] == ~"v"{
             fail_unless!(tokens.len() == 4u);
-            let v = vec3(    option::get(float::from_str(tokens[1])) as f32,
-                            option::get(float::from_str(tokens[2])) as f32,
-                            option::get(float::from_str(tokens[3])) as f32);
+            let v = vec3(    float::from_str(tokens[1]).get() as f32,
+                            float::from_str(tokens[2]).get() as f32,
+                            float::from_str(tokens[3]).get() as f32);
             fail_unless!(v.x != f32::NaN);
             fail_unless!(v.y != f32::NaN);
             fail_unless!(v.z != f32::NaN);

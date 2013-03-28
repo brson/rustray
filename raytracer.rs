@@ -264,7 +264,7 @@ fn trace_kd_tree_shadow(
                 let mut tri_index = tri_begin;
                 while tri_index < tri_begin + tri_count {
                     let t = &get_triangle( polys, tri_index as uint);
-                    if option::is_some( &r.intersect(t) ) {
+                    if ( r.intersect(t).is_some() ) {
                         return true;
                     }
                     tri_index += 1u32;
@@ -538,7 +538,7 @@ fn trace_ray_shadow( r: &Ray, mesh: &model::mesh, mint: f32, maxt: f32) -> bool 
     // compute checkerboard color, if we hit the floor plane
     let (checker_intersection, new_maxt) = trace_checkerboard(-y_size*0.5f32,r,mint,maxt);
 
-    if ( option::is_some( &checker_intersection ) ){
+    if ( checker_intersection.is_some() ) {
         return true;
     }
 
