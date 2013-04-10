@@ -274,13 +274,13 @@ fn read_polysoup(fname: &str) -> polysoup {
         for line.each_split_char(' ') |t| { tokens.push(t) }
 
         if tokens[0] == ~"v"{
-            fail_unless!(tokens.len() == 4u);
+            assert!(tokens.len() == 4u);
             let v = vec3(    float::from_str(tokens[1]).get() as f32,
                             float::from_str(tokens[2]).get() as f32,
                             float::from_str(tokens[3]).get() as f32);
-            fail_unless!(v.x != f32::NaN);
-            fail_unless!(v.y != f32::NaN);
-            fail_unless!(v.z != f32::NaN);
+            assert!(v.x != f32::NaN);
+            assert!(v.y != f32::NaN);
+            assert!(v.z != f32::NaN);
 
             vertices.push(v);
             vert_normals.push(vec3(0f32,0f32,0f32));
@@ -296,7 +296,7 @@ fn read_polysoup(fname: &str) -> polysoup {
 
                     face_triangles.push((i0, i1, i2));
                 } else {
-                    fail_unless!(tokens.len() == 5u);
+                    assert!(tokens.len() == 5u);
                     // quad, triangulate
                     let (i0,i1,i2,i3) = (   parse_faceindex(tokens[1]),
                                             parse_faceindex(tokens[2]),

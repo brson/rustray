@@ -29,11 +29,13 @@ fn get_ray( horizontalFOV: f32, width: uint, height: uint, x: uint, y: uint, sam
       dir: normalized( vec3( dirx, diry, dirz) ) }
 }
 
+#[deriving(Clone)]
 struct rand_env {
     floats: ~[f32],
     disk_samples: ~[(f32,f32)],
     hemicos_samples: ~[vec3]
 }
+
 
 #[incline(always)]
 fn get_rand_env() -> rand_env {
@@ -80,7 +82,7 @@ fn sample_disk( rnd: &rand_env, num: uint, body: &fn(f32,f32) ){
     if ( num == 1u ) {
         body(0f32,0f32);
     } else {
-        let mut ix = (rand::task_rng().next() as uint) % rnd.disk_samples.len(); // start at random location
+        let mut ix = (rand::task_rng().gen_uint() as uint) % rnd.disk_samples.len(); // start at random location
         for iter::repeat(num) {
             let (u,v) = rnd.disk_samples[ix];
             body(u,v);
@@ -599,38 +601,39 @@ struct TracetaskData {
 	height_stop: uint,
 	sample_coverage_inv: f32,
 	lights: ~[light],
-	channel: comm::Chan<~[Color]>
+	channel: comm::Chan<~[Color]>,
+	rnd: ~rand_env
 }
 
 #[inline(always)]
 fn tracetask(data: ~TracetaskData) {
-    fail_unless!(data.height_start < data.height_stop);
-    let mesh = std::arc::get(&data.meshARC);
-    let horizontalFOV = data.horizontalFOV;
-    let width = data.width;
-    let height = data.height;
-    let sample_grid_size = data.sample_grid_size;
-    let sample_coverage_inv = data.sample_coverage_inv;
-    let mut lights = ~[]; lights.push_all(data.lights);
-	let mut img_pixels = vec::with_capacity(data.width * (data.height_stop - data.height_start));
-    let rnd = get_rand_env();
-	for uint::range( data.height_start, data.height_stop ) |row| {
-		for uint::range( 0u, width ) |column| {
-            let mut shaded_color = vec3(0f32,0f32,0f32);
-            
-            do sample_stratified_2d(&rnd, sample_grid_size, sample_grid_size) |u,v| {
-                let sample = match sample_grid_size { 1u => (0f32,0f32), _ => (u-0.5f32,v-0.5f32) };
-                let r = &get_ray(horizontalFOV, width, height, column, row, sample );
-                shaded_color = add( shaded_color, get_color(r, mesh, lights, &rnd, 0f32, f32::infinity, 0u));
+    assert!(data.height_start < data.height_stop);
+    match data {
+        ~TracetaskData {taskNum: _, meshARC: meshARC, horizontalFOV: horizontalFOV, width: width,
+            height: height, sample_grid_size: sample_grid_size, height_start: height_start,
+            height_stop: height_stop, sample_coverage_inv: sample_coverage_inv, lights: lights,
+            channel: channel, rnd: rnd} => {
+                let mesh = std::arc::get(&meshARC);
+            	let mut img_pixels = vec::with_capacity(width * (height_stop - height_start));
+            	for uint::range( height_start, height_stop ) |row| {
+		            for uint::range( 0u, width ) |column| {
+                        let mut shaded_color = vec3(0f32,0f32,0f32);
+                        
+                        do sample_stratified_2d(rnd, sample_grid_size, sample_grid_size) |u,v| {
+                            let sample = match sample_grid_size { 1u => (0f32,0f32), _ => (u-0.5f32,v-0.5f32) };
+                            let r = &get_ray(horizontalFOV, width, height, column, row, sample );
+                            shaded_color = add( shaded_color, get_color(r, mesh, lights, rnd, 0f32, f32::infinity, 0u));
+                        }
+                        shaded_color = scale(gamma_correct(scale( shaded_color, sample_coverage_inv * sample_coverage_inv)), 255f32);
+                        let pixel = Color{  r: clamp(shaded_color.x, 0f32, 255f32) as u8,
+                                            g: clamp(shaded_color.y, 0f32, 255f32) as u8,
+                                            b: clamp(shaded_color.z, 0f32, 255f32) as u8 };
+                        img_pixels.push(pixel)
+		            }
+	            }
+	            channel.send(img_pixels);
             }
-            shaded_color = scale(gamma_correct(scale( shaded_color, sample_coverage_inv * sample_coverage_inv)), 255f32);
-            let pixel = Color{  r: clamp(shaded_color.x, 0f32, 255f32) as u8,
-                                g: clamp(shaded_color.y, 0f32, 255f32) as u8,
-                                b: clamp(shaded_color.z, 0f32, 255f32) as u8 };
-            img_pixels.push(pixel)
-		}
-	}
-	data.channel.send(img_pixels);
+    }
 }
 
 pub fn generate_raytraced_image_single(
@@ -680,6 +683,7 @@ pub fn generate_raytraced_image_multi(
     io::print(fmt!("using %? tasks ... ", num_tasks));
     let mut ports: ~[comm::Port<~[Color]>] = ~[];
     let meshARC = std::arc::ARC(mesh);
+    let rnd = get_rand_env();
     for uint::range(0,num_tasks) |i| {
         let (p,c): (comm::Port<~[Color]>,comm::Chan<~[Color]>) = comm::stream();
         let step_size = height / num_tasks;
@@ -697,7 +701,8 @@ pub fn generate_raytraced_image_multi(
             height_stop: height_stop,
             sample_coverage_inv: sample_coverage_inv,
             lights: copy lights,
-            channel: c
+            channel: c,
+            rnd: ~rnd.clone()
         };
         task::spawn_with(ttd, tracetask);
         ports.push(p);
