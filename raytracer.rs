@@ -43,8 +43,8 @@ fn get_rand_env() -> rand_env {
 
     let disk_samples = do vec::from_fn(513u) |_x| {
         // compute random position on light disk
-        let r_sqrt = f32::sqrt(gen.gen_f32());
-        let theta = gen.gen_f32() * 2f32 * f32::consts::pi;
+        let r_sqrt = f32::sqrt(gen.gen());
+        let theta = gen.gen::<f32>() * 2f32 * f32::consts::pi;
         (r_sqrt * f32::cos(theta), r_sqrt*f32::sin(theta))
     };
 
@@ -52,14 +52,14 @@ fn get_rand_env() -> rand_env {
 
     for uint::range(0u, NUM_GI_SAMPLES_SQRT) |x| {
         for uint::range(0u, NUM_GI_SAMPLES_SQRT) |y| {
-            let (u,v) = (    ( (x as f32) + gen.gen_f32() ) / (NUM_GI_SAMPLES_SQRT as f32),
-                            ( (y as f32) + gen.gen_f32() ) / (NUM_GI_SAMPLES_SQRT as f32) );
+            let (u,v) = (    ( (x as f32) + gen.gen() ) / (NUM_GI_SAMPLES_SQRT as f32),
+                            ( (y as f32) + gen.gen() ) / (NUM_GI_SAMPLES_SQRT as f32) );
             hemicos_samples.push(cosine_hemisphere_sample(u,v));
         }
     };
 
     rand_env{
-        floats: vec::from_fn(513u, |_x| gen.gen_f32() ),
+        floats: vec::from_fn(513u, |_x| gen.gen() ),
         disk_samples: disk_samples,
         hemicos_samples: hemicos_samples }
 }
@@ -67,7 +67,7 @@ fn get_rand_env() -> rand_env {
 #[incline(always)]
 fn sample_floats_2d_offset( offset: uint, rnd: &rand_env, num: uint, body: &fn(f32,f32) ) {
     let mut ix = offset % rnd.floats.len();
-    for iter::repeat(num) {
+    for num.times {
         let r1 = rnd.floats[ix];
         ix = (ix + 1u) % rnd.floats.len();
         let r2 = rnd.floats[ix];
@@ -82,8 +82,8 @@ fn sample_disk( rnd: &rand_env, num: uint, body: &fn(f32,f32) ){
     if ( num == 1u ) {
         body(0f32,0f32);
     } else {
-        let mut ix = (rand::task_rng().gen_uint() as uint) % rnd.disk_samples.len(); // start at random location
-        for iter::repeat(num) {
+        let mut ix = rand::task_rng().gen::<uint>() % rnd.disk_samples.len(); // start at random location
+        for num.times {
             let (u,v) = rnd.disk_samples[ix];
             body(u,v);
             ix = (ix + 1u) % rnd.disk_samples.len();
