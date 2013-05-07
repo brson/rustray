@@ -40,7 +40,7 @@ fn find_split_plane( distances: &[f32], indices: &[uint], faces: &[uint] ) -> f3
         face_distances.push(distances[indices[*f*3u+2u]]);
     }
 
-    let mut sorted_distances = sort::merge_sort( face_distances, |a,b| *a<*b );
+    let sorted_distances = sort::merge_sort( face_distances, |a,b| *a<*b );
     let n = sorted_distances.len();
     if n % 2u == 0u {
         sorted_distances[ n/2u ]
