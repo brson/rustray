@@ -1,5 +1,6 @@
 use consts::*; // for the consts.. ugh... make the constants go away
 use math3d::*;
+use concurrent;
 use model;
 use core::rand::{RngUtil,Rng,task_rng};
 
@@ -39,7 +40,7 @@ struct rand_env {
 
 #[incline(always)]
 fn get_rand_env() -> rand_env {
-    let gen = task_rng();
+    let mut gen = task_rng();
 
     let disk_samples = do vec::from_fn(513u) |_x| {
         // compute random position on light disk
@@ -78,11 +79,11 @@ fn sample_floats_2d_offset( offset: uint, rnd: &rand_env, num: uint, body: &fn(f
 
 #[inline(always)]
 fn sample_disk( rnd: &rand_env, num: uint, body: &fn(f32,f32) ){
-
+    let mut rng = rand::task_rng();
     if ( num == 1u ) {
         body(0f32,0f32);
     } else {
-        let mut ix = rand::task_rng().gen::<uint>() % rnd.disk_samples.len(); // start at random location
+        let mut ix = rng.gen::<uint>() % rnd.disk_samples.len(); // start at random location
         for num.times {
             let (u,v) = rnd.disk_samples[ix];
             body(u,v);
@@ -94,15 +95,16 @@ fn sample_disk( rnd: &rand_env, num: uint, body: &fn(f32,f32) ){
 // Sample 2 floats at a time, starting with an offset that's passed in
 #[incline(always)]
 fn sample_floats_2d( rnd: &rand_env, num: uint, body: &fn(f32,f32) ) {
-    sample_floats_2d_offset( rand::task_rng().next() as uint, rnd, num, body);
+    let mut rng = rand::task_rng();
+    sample_floats_2d_offset( rng.next() as uint, rnd, num, body);
 }
 
 #[incline(always)]
 fn sample_stratified_2d( rnd: &rand_env, m: uint, n : uint, body: &fn(f32,f32) ) {
     let m_inv = 1f32/(m as f32);
     let n_inv = 1f32/(n as f32);
-
-    let start_offset = rand::task_rng().next();
+    let mut rng = rand::task_rng();
+    let start_offset = rng.next();
     for uint::range( 0u, m ) |samplex| {
         // sample one "row" of 2d floats
         let mut sampley = 0u;
@@ -116,8 +118,9 @@ fn sample_stratified_2d( rnd: &rand_env, m: uint, n : uint, body: &fn(f32,f32) )
 
 #[incline(always)]
 fn sample_cosine_hemisphere( rnd: &rand_env, n: vec3, body: &fn(vec3) ) {
+    let mut rng = rand::task_rng();
     let rot_to_up = rotate_to_up(n);
-    let random_rot = rotate_y( rnd.floats[ rand::task_rng().next() as uint % rnd.floats.len() ] ); // random angle about y
+    let random_rot = rotate_y( rnd.floats[ rng.next() as uint % rnd.floats.len() ] ); // random angle about y
     let m = mul_mtx33(rot_to_up, random_rot);
         for rnd.hemicos_samples.each |s| {
         body(transform(m,*s));
@@ -591,7 +594,6 @@ fn gamma_correct( v : vec3 ) -> vec3 {
 }
 
 struct TracetaskData {
-    taskNum: uint,
 	meshARC: std::arc::ARC<model::mesh>,
 	horizontalFOV: f32,
 	width: uint,
@@ -601,22 +603,20 @@ struct TracetaskData {
 	height_stop: uint,
 	sample_coverage_inv: f32,
 	lights: ~[light],
-	channel: comm::Chan<~[Color]>,
 	rnd: ~rand_env
 }
 
-#[inline(always)]
-fn tracetask(data: ~TracetaskData) {
-    assert!(data.height_start < data.height_stop);
+#[inline]
+fn tracetask(data: ~TracetaskData) -> ~[Color] {
     match data {
-        ~TracetaskData {taskNum: _, meshARC: meshARC, horizontalFOV: horizontalFOV, width: width,
+        ~TracetaskData {meshARC: meshARC, horizontalFOV: horizontalFOV, width: width,
             height: height, sample_grid_size: sample_grid_size, height_start: height_start,
             height_stop: height_stop, sample_coverage_inv: sample_coverage_inv, lights: lights,
-            channel: channel, rnd: rnd} => {
+            rnd: rnd} => {
                 let mesh = std::arc::get(&meshARC);
-            	let mut img_pixels = vec::with_capacity(width * (height_stop - height_start));
+            	let mut img_pixels = vec::with_capacity(width);
             	for uint::range( height_start, height_stop ) |row| {
-		            for uint::range( 0u, width ) |column| {
+	                for uint::range( 0u, width ) |column| {
                         let mut shaded_color = vec3(0f32,0f32,0f32);
                         
                         do sample_stratified_2d(rnd, sample_grid_size, sample_grid_size) |u,v| {
@@ -629,10 +629,10 @@ fn tracetask(data: ~TracetaskData) {
                                             g: clamp(shaded_color.y, 0f32, 255f32) as u8,
                                             b: clamp(shaded_color.z, 0f32, 255f32) as u8 };
                         img_pixels.push(pixel)
-		            }
-	            }
-	            channel.send(img_pixels);
-            }
+	                }
+                }
+            img_pixels
+        }
     }
 }
 
@@ -663,13 +663,9 @@ pub fn generate_raytraced_image_single(
 }
 
 // This fn generates the raytraced image by spawning 'num_tasks' tasks, and letting each
-// generate a part of the image. The way the work is divided is not intelligent: it 
-// Divides the height by num_tasks and lets each task calculate the rays. When some parts
-// of the image are more complex than others, some tasks will work much longer than others,
-// a more intelligent approach would either divide the work more intelligently or do
-// work stealing of some sort.
-// Because of the way it currently works, adding more tasks than physical processors still
-// speeds up the tracing. It's awful.
+// generate a part of the image. The way the work is divided is not intelligent: it chops
+// the image in horizontal chunks of step_size pixels high, and divides these between the
+// tasks. There is no work-stealing :(
 pub fn generate_raytraced_image_multi(
     mesh: model::mesh,
     horizontalFOV: f32,
@@ -681,37 +677,34 @@ pub fn generate_raytraced_image_multi(
     num_tasks: uint) -> ~[Color]
 {
     io::print(fmt!("using %? tasks ... ", num_tasks));
-    let mut ports: ~[comm::Port<~[Color]>] = ~[];
     let meshARC = std::arc::ARC(mesh);
     let rnd = get_rand_env();
-    for uint::range(0,num_tasks) |i| {
-        let (p,c): (comm::Port<~[Color]>,comm::Chan<~[Color]>) = comm::stream();
-        let step_size = height / num_tasks;
-        let height_start = i * step_size;
-        let mut height_stop = (i+1) * step_size;
-        if (height - height_stop < step_size) { height_stop = height };
-        let ttd = ~TracetaskData{   // The data required to trace the rays.
-            taskNum: i,
+    let mut workers = ~[];
+    for num_tasks.times {
+        workers.push(concurrent::ConcurrentCalc::new());
+    }
+    let step_size = 4;
+    let mut results = ~[];
+    for uint::range(0,(height / step_size)+1) |i| {
+        let ttd = ~TracetaskData {   // The data required to trace the rays.
             meshARC: meshARC.clone(),
             horizontalFOV: horizontalFOV,
             width: width,
             height: height,
             sample_grid_size: sample_grid_size,
-            height_start: height_start,
-            height_stop: height_stop,
+            height_start: uint::min( i * step_size, height),
+            height_stop: uint::min( (i + 1) * step_size, height ),
             sample_coverage_inv: sample_coverage_inv,
             lights: copy lights,
-            channel: c,
             rnd: ~rnd.clone()
         };
-        task::spawn_with(ttd, tracetask);
-        ports.push(p);
-    };
-    let mut result: ~[Color] = ~[]; // Accumulator for all the pixels.
-    for ports.each() |p| {  // Get the results from the tasks.
-        let chunk = p.recv();
-        //io::println(fmt!("Received chunk, size: %? bytes", chunk.len()));
-        result.push_all( chunk );
+        results.push(workers[i % num_tasks].calculate(ttd,tracetask));
+    }
+//    println("Done distributing the work, let's evaluate!");
+    let mut result = ~[];
+    do vec::consume(results) |_,future| {   // results.consume segfaults.
+        let mut future = future;
+        result.push_all( future.get() )
     }
     result
 }
@@ -734,7 +727,7 @@ pub fn generate_raytraced_image(
       0 => unsafe { rust_num_threads() as uint },
       n => n
     };
-    if num_tasks > width { num_tasks = width };
+    if num_tasks > height { num_tasks = height };   // We evaluate complete rows, there is no point in having more tasks than there are rows.
     match num_tasks {
         1 => generate_raytraced_image_single(mesh,horizontalFOV,width,height,sample_grid_size,sample_coverage_inv,lights),
         n => generate_raytraced_image_multi(mesh,horizontalFOV,width,height,sample_grid_size,sample_coverage_inv,lights,n)

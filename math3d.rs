@@ -203,5 +203,5 @@ pub fn intersection_test()
                     p2: vec3(1f32, -1f32, -1f32),
                     p3: vec3(0f32, 2f32, -1f32) };
 
-    fail_unless!(option::is_some( &ray.intersect(&tri) ));
+    assert!(option::is_some( &ray.intersect(&tri) ));
 }

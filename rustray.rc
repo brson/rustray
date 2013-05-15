@@ -1,5 +1,5 @@
 #[link(name = "rustray",
-       vers = "0.6",
+       vers = "0.7",
        uuid = "c89c5834-63db-4a6e-8e0a-d75985b1730e",
        url = "https://github.com/brson/rustray")];
 
@@ -15,3 +15,4 @@ pub mod main;
 pub mod math3d;
 pub mod model;
 pub mod raytracer;
+pub mod concurrent;

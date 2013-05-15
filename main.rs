@@ -15,6 +15,7 @@ fn write_ppm( fname: &str, width: uint, height: uint, pixels: &[raytracer::Color
     };
 }
 
+#[main]
 fn main()
 {
     // Get command line args

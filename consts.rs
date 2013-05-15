@@ -8,4 +8,4 @@ pub static NUM_LIGHT_SAMPLES : uint = 8u;
 pub static MAX_TRACE_DEPTH : uint = 1u;
 pub static USE_SMOOTH_NORMALS_FOR_GI : bool = true;
 pub static USE_SMOOTH_NORMALS_FOR_DIRECT_LIGHTING : bool = true;
-pub static NUM_THREADS: uint = 32u;
+pub static NUM_THREADS: uint = 0u;
