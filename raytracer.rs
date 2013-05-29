@@ -2,9 +2,9 @@ use consts::*; // for the consts.. ugh... make the constants go away
 use math3d::*;
 use concurrent;
 use model;
-use core::rand::{RngUtil,Rng,task_rng};
+use std::rand::{RngUtil,Rng,task_rng};
 
-use std;
+use extra;
 
 pub struct Color { r:u8, g:u8, b:u8 }
 
@@ -594,7 +594,7 @@ fn gamma_correct( v : vec3 ) -> vec3 {
 }
 
 struct TracetaskData {
-	meshARC: std::arc::ARC<model::mesh>,
+	meshARC: extra::arc::ARC<model::mesh>,
 	horizontalFOV: f32,
 	width: uint,
     height: uint,
@@ -613,7 +613,7 @@ fn tracetask(data: ~TracetaskData) -> ~[Color] {
             height: height, sample_grid_size: sample_grid_size, height_start: height_start,
             height_stop: height_stop, sample_coverage_inv: sample_coverage_inv, lights: lights,
             rnd: rnd} => {
-                let mesh = std::arc::get(&meshARC);
+                let mesh = meshARC.get();
             	let mut img_pixels = vec::with_capacity(width);
             	for uint::range( height_start, height_stop ) |row| {
 	                for uint::range( 0u, width ) |column| {
@@ -677,7 +677,7 @@ pub fn generate_raytraced_image_multi(
     num_tasks: uint) -> ~[Color]
 {
     io::print(fmt!("using %? tasks ... ", num_tasks));
-    let meshARC = std::arc::ARC(mesh);
+    let meshARC = extra::arc::ARC(mesh);
     let rnd = get_rand_env();
     let mut workers = ~[];
     for num_tasks.times {

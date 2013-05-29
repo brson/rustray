@@ -1,7 +1,7 @@
 use math3d::*;
 
-use core::io::{Reader, ReaderUtil};
-use std::sort;
+use std::io::{Reader, ReaderUtil};
+use extra::sort;
 
 pub struct polysoup {
     vertices: ~[vec3],
@@ -273,7 +273,7 @@ fn read_polysoup(fname: &str) -> polysoup {
         let mut tokens = ~[];
         for line.each_split_char(' ') |t| { tokens.push(t) }
 
-        if tokens[0] == ~"v"{
+        if tokens[0] == "v"{
             assert!(tokens.len() == 4u);
             let v = vec3(    float::from_str(tokens[1]).get() as f32,
                             float::from_str(tokens[2]).get() as f32,
@@ -285,7 +285,7 @@ fn read_polysoup(fname: &str) -> polysoup {
             vertices.push(v);
             vert_normals.push(vec3(0f32,0f32,0f32));
 
-        } else if tokens[0] == ~"f" {
+        } else if tokens[0] == "f" {
             if tokens.len() == 4u || tokens.len() == 5u {
                 let mut face_triangles = ~[];
 
@@ -322,9 +322,9 @@ fn read_polysoup(fname: &str) -> polysoup {
             } else {
                 io::println(fmt!("Polygon with %u vertices found. Ignored. Currently rustray only supports 4 vertices", tokens.len() - 1u));
             }
-        } else if tokens[0] == ~"vt" {
+        } else if tokens[0] == "vt" {
             num_texcoords += 1u;
-        } else if tokens[0] != ~"#" {
+        } else if tokens[0] != "#" {
             io::println(fmt!("Unrecognized line in .obj file: %s", line));
         }
 

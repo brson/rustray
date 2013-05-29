@@ -8,7 +8,7 @@
 #[license = "Unknown"];
 #[crate_type = "bin"];
 
-extern mod std;
+extern mod extra;
 
 pub mod consts;
 pub mod main;

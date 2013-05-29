@@ -1,7 +1,7 @@
-extern mod std;
+extern mod extra;
 
-use std::future::{Future,from_port};
-use core::comm;
+use extra::future::{Future,from_port};
+use std::comm;
 
 struct ConcurrentCalc<T,U> {
     priv chan: Chan<(T,~fn(T)->U,comm::ChanOne<U>)>

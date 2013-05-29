@@ -2,8 +2,8 @@ use consts::*;
 use model;
 use raytracer;
 
-use core::io::{Writer, WriterUtil};
-use std;
+use std::io::{Writer, WriterUtil};
+use extra;
 
 fn write_ppm( fname: &str, width: uint, height: uint, pixels: &[raytracer::Color] ){
 
@@ -32,7 +32,7 @@ fn main()
         fail!();
     }
 
-    let start = std::time::precise_time_s();
+    let start = extra::time::precise_time_s();
 
 
     io::println(~"Reading \"" + args[1] + "\"...");
@@ -46,16 +46,16 @@ fn main()
                 depth, count));
 
     io::print("Tracing rays... ");
-    let start_tracing = std::time::precise_time_s();
+    let start_tracing = extra::time::precise_time_s();
     let pixels = raytracer::generate_raytraced_image(model, FOV, WIDTH, HEIGHT, SAMPLE_GRID_SIZE);
     io::println("Done!");
-    let end_tracing = std::time::precise_time_s();
+    let end_tracing = extra::time::precise_time_s();
     
     let outputfile = "./oput.ppm";
     io::print(~"Writing \"" + outputfile + "\"...");
     write_ppm( outputfile, WIDTH, HEIGHT, pixels );
     io::println("Done!");
 
-    let end = std::time::precise_time_s();
+    let end = extra::time::precise_time_s();
     io::print(fmt!("Total time: %3.3fs, of which tracing: %3.3f\n", end - start, end_tracing - start_tracing) );
 }
