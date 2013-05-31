@@ -2,6 +2,7 @@ use consts::*;
 use model;
 use raytracer;
 
+use std::*;
 use std::io::{Writer, WriterUtil};
 use extra;
 

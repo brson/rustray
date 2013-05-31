@@ -1,3 +1,5 @@
+use std::*;
+
 #[deriving(Eq,Clone)]
 pub struct vec3 {
     x:f32,

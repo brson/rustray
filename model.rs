@@ -1,5 +1,6 @@
 use math3d::*;
 
+use std::*;
 use std::io::{Reader, ReaderUtil};
 use extra::sort;
 
