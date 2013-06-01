@@ -246,7 +246,6 @@ pub fn read_mesh(fname: &str) -> mesh {
     kd_tree: kd_tree{ root: rootnode, nodes: nodes} , bounding_box: aabb{min: aabbmin, max: aabbmax} }
 }
 
-#[inline(always)]
 fn parse_faceindex(s: &str) ->  uint {
 
     // check for '/', the vertex index is the first
