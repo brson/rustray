@@ -249,14 +249,15 @@ pub fn read_mesh(fname: &str) -> mesh {
 fn parse_faceindex(s: &str) ->  uint {
 
     // check for '/', the vertex index is the first
-    let ix_str = match str::find_char(s,'/'){
-        Some(slash_ix) => s.substr(0u, slash_ix),
+    let ix_str = match s.find('/') {
+        Some(slash_ix) => s.slice(0u, slash_ix),
         _ => s
     };
     uint::from_str(ix_str).get()-1u
 }
 
 fn read_polysoup(fname: &str) -> polysoup {
+    use std::iterator::IteratorUtil;
     let reader = result::get( &io::file_reader( &Path(fname) ) );
     let mut vertices = ~[];
     let mut indices = ~[];
@@ -265,17 +266,17 @@ fn read_polysoup(fname: &str) -> polysoup {
 
     while !reader.eof() {
         let line : ~str = reader.read_line();
-        if str::is_empty(line) {
+        if line.is_empty() {
             loop;
         }
 
         let mut num_texcoords = 0u;
         let mut tokens = ~[];
-        for line.each_split_char(' ') |t| { tokens.push(t) }
+        for line.split_iter(' ').advance |s| { tokens.push(s) };
 
-        if tokens[0] == "v"{
+        if tokens[0] == "v" {
             assert!(tokens.len() == 4u);
-            let v = vec3(    float::from_str(tokens[1]).get() as f32,
+            let v = vec3(   float::from_str(tokens[1]).get() as f32,
                             float::from_str(tokens[2]).get() as f32,
                             float::from_str(tokens[3]).get() as f32);
             assert!(v.x != f32::NaN);

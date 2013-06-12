@@ -90,9 +90,9 @@ pub struct Ray { origin:vec3, dir:vec3 }
 pub struct Triangle { p1: vec3, p2: vec3, p3: vec3 }
 pub struct HitResult { barycentric: vec3, t: f32 }
 
-pub impl Ray {
+impl Ray {
     #[inline(always)]
-    fn intersect(&self, t: &Triangle) -> Option<HitResult> {
+    pub fn intersect(&self, t: &Triangle) -> Option<HitResult> {
         let e1 = sub(t.p2,t.p1);
         let e2 = sub(t.p3,t.p1);
         let s1 = cross(self.dir,e2);
@@ -125,7 +125,7 @@ pub impl Ray {
         option::Some( HitResult{barycentric: vec3(b1, b2, 1.0f32-b1-b2), t: t} )
     }
     #[inline(always)]
-    fn aabb_check(&self, max_dist: f32, box: aabb ) -> bool {
+    pub fn aabb_check(&self, max_dist: f32, box: aabb ) -> bool {
         let inv_dir = recip(self.dir);
         let (tx1,tx2,ty1,ty2,tz1,tz2) = (
             (box.min.x - self.origin.x)*inv_dir.x,
