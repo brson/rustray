@@ -121,7 +121,7 @@ fn sample_cosine_hemisphere( rnd: &rand_env, n: vec3, body: &fn(vec3) ) {
     let rot_to_up = rotate_to_up(n);
     let random_rot = rotate_y( rnd.floats[ rng.next() as uint % rnd.floats.len() ] ); // random angle about y
     let m = mul_mtx33(rot_to_up, random_rot);
-        for rnd.hemicos_samples.each |s| {
+        for rnd.hemicos_samples.iter().advance |s| {
         body(transform(m,*s));
     }
 }
@@ -347,7 +347,7 @@ fn make_light( pos: vec3, strength: f32, radius: f32, color: vec3 ) -> light {
 fn direct_lighting( lights: &[light], pos: vec3, n: vec3, view_vec: vec3, rnd: &rand_env, depth: uint, occlusion_probe: &fn(vec3) -> bool ) -> vec3 {
 
     let mut direct_light = vec3(0.0,0.0,0.0);
-    for lights.each |l| {
+    for lights.iter().advance |l| {
 
         // compute shadow contribution
         let mut shadow_contrib = 0.0;

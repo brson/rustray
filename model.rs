@@ -35,7 +35,7 @@ pub enum kd_tree_node {
 fn find_split_plane( distances: &[f32], indices: &[uint], faces: &[uint] ) -> f32 {
 
     let mut face_distances = vec::with_capacity( 3*faces.len() );
-    for faces.each |f| {
+    for faces.iter().advance |f| {
         face_distances.push(distances[indices[*f*3u]]);
         face_distances.push(distances[indices[*f*3u+1u]]);
         face_distances.push(distances[indices[*f*3u+2u]]);
@@ -54,7 +54,7 @@ fn split_triangles( splitter: f32, distances: &[f32], indices: &[uint], faces: &
     let mut l = ~[];
     let mut r = ~[];
 
-    for faces.each |f| {
+    for faces.iter().advance |f| {
         let f = *f;
         let d0 = distances[indices[f*3u   ]];
         let d1 = distances[indices[f*3u+1u]];
@@ -85,7 +85,7 @@ fn build_leaf(
     let next_face_ix : u32 = (new_indices.len() as u32) / 3u32;
     kd_tree_nodes.push(leaf( next_face_ix, (faces.len() as u32) ));
 
-    for faces.each |f| {
+    for faces.iter().advance |f| {
         let f = *f;
         *new_indices += &[ indices[f*3u], indices[f*3u+1u], indices[f*3u+2u] ];
     }
@@ -199,7 +199,7 @@ pub fn read_mesh(fname: &str) -> mesh {
     }
     let mut aabbmin = vec3(f32::infinity, f32::infinity, f32::infinity);
     let mut aabbmax = vec3(f32::neg_infinity, f32::neg_infinity, f32::neg_infinity);
-    for polys.vertices.each |v| {
+    for polys.vertices.iter().advance |v| {
         aabbmin = min(*v, aabbmin);
         aabbmax = max(*v, aabbmax);
     }
@@ -210,7 +210,7 @@ pub fn read_mesh(fname: &str) -> mesh {
     let mut transformed_verts = ~[];
 
 
-    for polys.vertices.each |v| {
+    for polys.vertices.iter().advance |v| {
         transformed_verts.push(scale(sub(*v, offset), downscale));
     }
 
@@ -222,7 +222,7 @@ pub fn read_mesh(fname: &str) -> mesh {
     let mut ydists = ~[];
     let mut zdists = ~[];
 
-    for transformed_verts.each |v| {
+    for transformed_verts.iter().advance |v| {
         xdists.push(v.x);
         ydists.push(v.y);
         zdists.push(v.z);
@@ -308,7 +308,7 @@ fn read_polysoup(fname: &str) -> polysoup {
                     face_triangles.push((i0,i2,i3));
                 }
 
-                for face_triangles.each |t| {
+                for face_triangles.iter().advance |t| {
                     let (i0,i1,i2) = *t;
                     indices += [i0,i1,i2];
 
