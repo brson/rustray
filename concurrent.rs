@@ -7,7 +7,7 @@ struct ConcurrentCalc<T,U> {
     priv chan: Chan<(T,~fn(T)->U,comm::ChanOne<U>)>
 }
 
-impl<T:Owned, U: Owned> ConcurrentCalc<T,U> {
+impl<T:Send, U: Send> ConcurrentCalc<T,U> {
     pub fn new() -> ConcurrentCalc<T,U> {
         let (p, c) = comm::stream();
         do spawn {

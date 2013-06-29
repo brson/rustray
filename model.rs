@@ -64,11 +64,11 @@ fn split_triangles( splitter: f32, distances: &[f32], indices: &[uint], faces: &
         let mindist = f32::fmin(d0, f32::fmin(d1, d2));
 
         if mindist <= splitter {
-            l += [f];
+            l.push(f);
         }
 
         if maxdist >= splitter {
-            r += [f];
+            r.push(f);
         }
     }
 
@@ -87,7 +87,9 @@ fn build_leaf(
 
     for faces.iter().advance |f| {
         let f = *f;
-        *new_indices += &[ indices[f*3u], indices[f*3u+1u], indices[f*3u+2u] ];
+        new_indices.push( indices[f*3]   );
+        new_indices.push( indices[f*3+1] );
+        new_indices.push( indices[f*3+2] );
     }
     kd_tree_nodes.len() - 1u
 }
@@ -310,7 +312,9 @@ fn read_polysoup(fname: &str) -> polysoup {
 
                 for face_triangles.iter().advance |t| {
                     let (i0,i1,i2) = *t;
-                    indices += [i0,i1,i2];
+                    indices.push(i0);
+                    indices.push(i1);
+                    indices.push(i2);
 
                     let e1 = sub(vertices[i1], vertices[i0]);
                     let e2 = sub(vertices[i2], vertices[i0]);
