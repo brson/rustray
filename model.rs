@@ -340,5 +340,5 @@ fn read_polysoup(fname: &str) -> polysoup {
 
     return polysoup{ vertices: vertices,
             indices: indices,
-            normals: vec::map( vert_normals, |v| normalized(*v) ) };
+            normals: do vert_normals.map |v|{normalized(*v)} };
 }
