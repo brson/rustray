@@ -691,7 +691,7 @@ pub fn generate_raytraced_image_multi(
     }
 //    println("Done distributing the work, let's evaluate!");
     let mut result = ~[];
-    do vec::consume(results) |_,future| {   // results.consume segfaults.
+    for results.consume_iter().advance |future| {
         let mut future = future;
         result.push_all( future.get() )
     }
