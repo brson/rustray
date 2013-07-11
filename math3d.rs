@@ -40,7 +40,7 @@ pub fn length_sq(v:vec3) -> f32 {
 
 #[inline(always)]
 pub fn length(v:vec3) -> f32 {
-    f32::sqrt(length_sq(v))
+    length_sq(v).sqrt()
 }
 
 #[inline(always)]
@@ -78,12 +78,12 @@ pub fn cross(a:vec3, b:vec3) -> vec3 {
 
 #[inline(always)]
 pub fn min(a: vec3, b: vec3) -> vec3 {
-    vec3( f32::fmin(a.x,b.x), f32::fmin(a.y, b.y), f32::fmin(a.z, b.z) )
+    vec3( a.x.min(&b.x), a.y.min(&b.y), a.z.min(&b.z) )
 }
 
 #[inline(always)]
 pub fn max(a: vec3, b: vec3) -> vec3 {
-    vec3( f32::fmax(a.x,b.x), f32::fmax(a.y, b.y), f32::fmax(a.z, b.z) )
+    vec3( a.x.max(&b.x), a.y.max(&b.y), a.z.max(&b.z) )
 }
 
 pub struct Ray { origin:vec3, dir:vec3 }
@@ -136,12 +136,12 @@ impl Ray {
             (box.max.z - self.origin.z)*inv_dir.z
         );
 
-        let (minx, maxx) = (f32::fmin(tx1,tx2), f32::fmax(tx1,tx2));
-        let (miny, maxy) = (f32::fmin(ty1,ty2), f32::fmax(ty1,ty2));
-        let (minz, maxz) = (f32::fmin(tz1,tz2), f32::fmax(tz1,tz2));
+        let (minx, maxx) = (tx1.min(&tx2), tx1.max(&tx2));
+        let (miny, maxy) = (ty1.min(&ty2), ty1.max(&ty2));
+        let (minz, maxz) = (tz1.min(&tz2), tz1.max(&tz2));
 
-        let tmin = f32::fmax(minx, f32::fmax(miny, minz));
-        let tmax = f32::fmin(maxx, f32::fmin(maxy, maxz));
+        let tmin = minx.max(& miny.max(& minz ) );
+        let tmax = maxx.min(& maxy.min(& maxz ) );
 
         tmax >= 0f32 && tmin <= tmax && tmin <= max_dist
     }
@@ -157,9 +157,9 @@ pub struct aabb {
 // in [0,1) range.
 #[inline(always)]
 pub fn cosine_hemisphere_sample( u: f32, v: f32 ) -> vec3 {
-    let r_sqrt = f32::sqrt(u);
+    let r_sqrt = u.sqrt();
     let theta = 2f32 * f32::consts::pi * v;
-    vec3( r_sqrt*f32::cos(theta), f32::sqrt(1f32-u), r_sqrt*f32::sin(theta))
+    vec3( r_sqrt*theta.cos(), (1f32-u).sqrt(), r_sqrt*theta.sin() )
 }
 
 #[inline(always)]
@@ -172,8 +172,8 @@ pub fn rotate_to_up( up_vec: vec3 ) -> mtx33 {
 
 #[inline(always)]
 pub fn rotate_y(theta: f32) -> mtx33{
-    let ct = f32::cos(theta);
-    let st = f32::sin(theta);
+    let ct = theta.cos();
+    let st = theta.sin();
     mtx33{ r0: vec3(ct,0f32,st), r1: vec3(0f32,1f32,0f32), r2: vec3(-st, 0f32, ct) }
 }
 

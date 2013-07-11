@@ -60,8 +60,8 @@ fn split_triangles( splitter: f32, distances: &[f32], indices: &[uint], faces: &
         let d1 = distances[indices[f*3u+1u]];
         let d2 = distances[indices[f*3u+2u]];
 
-        let maxdist = f32::fmax(d0, f32::fmax(d1, d2));
-        let mindist = f32::fmin(d0, f32::fmin(d1, d2));
+        let maxdist = d0.max( &d1.max( &d2 ) );
+        let mindist = d0.min( &d1.min( &d2 ) );
 
         if mindist <= splitter {
             l.push(f);

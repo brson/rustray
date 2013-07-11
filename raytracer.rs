@@ -26,7 +26,7 @@ fn get_ray( horizontalFOV: f32, width: uint, height: uint, x: uint, y: uint, sam
     let (jitterx,jittery) = sample_jitter;
     let dirx = (x as f32) - ((width/2) as f32) + jitterx;
     let diry = -((y as f32) - ((height/2) as f32)) + jittery;
-    let dirz = -((width/2u) as f32) / f32::tan(horizontalFOV*0.5);
+    let dirz = -((width/2u) as f32) / (horizontalFOV*0.5).tan();
     Ray{ origin: vec3(0.0, 0.0, 1.0),
       dir: normalized( vec3( dirx, diry, dirz) ) }
 }
@@ -43,9 +43,9 @@ fn get_rand_env() -> rand_env {
 
     let disk_samples = do vec::from_fn(513u) |_x| {
         // compute random position on light disk
-        let r_sqrt = f32::sqrt(gen.gen());
+        let r_sqrt = gen.gen::<f32>().sqrt();
         let theta = gen.gen::<f32>() * 2.0 * f32::consts::pi;
-        (r_sqrt * f32::cos(theta), r_sqrt*f32::sin(theta))
+        (r_sqrt * theta.cos(), r_sqrt*theta.sin())
     };
 
     let mut hemicos_samples = vec::with_capacity(NUM_GI_SAMPLES_SQRT * NUM_GI_SAMPLES_SQRT);
@@ -135,7 +135,7 @@ fn get_triangle( m : &model::polysoup, ix : uint ) -> Triangle{
 
 #[inline(always)]
 fn clamp( x: f32, lo: f32, hi: f32 ) -> f32{
-    //f32::fmin(hi, f32::fmax( x, lo ))
+    //f32::min(hi, f32::max( x, lo ))
     if x < lo { lo } else if x > hi { hi } else { x }
 }
 
@@ -375,7 +375,7 @@ fn direct_lighting( lights: &[light], pos: vec3, n: vec3, view_vec: vec3, rnd: &
                 let half_vector = normalized(add(light_vec_n, view_vec));
 
                 let s = dot(n,half_vector);
-                let specular = f32::pow(s,175.0);
+                let specular = s.pow(&175.0);
 
                 let atten = shadow_contrib*l.strength*(1.0/length_sq(light_vec) + specular*0.05);
 
@@ -453,7 +453,7 @@ fn trace_checkerboard( checkerboard_height: f32, r : &Ray, mint: f32, maxt: f32)
             let pos = add(r.origin,scale(r.dir, checker_hit_t));
 
             // hacky checkerboard pattern
-            let (u,v) = (f32::floor(pos.x*5.0) as int, f32::floor(pos.z*5.0) as int);
+            let (u,v) = ((pos.x*5.0).floor() as int, (pos.z*5.0).floor() as int);
             let is_white = (u + v) % 2 == 0;
             let color = if is_white { vec3(1.0,1.0,1.0) } else { vec3(1.0,0.5,0.5) };
             let intersection = option::Some( intersection{
@@ -577,9 +577,9 @@ fn get_color( r: &Ray, mesh: &model::mesh, lights: &[light], rnd: &rand_env, tmi
 
 #[inline]
 fn gamma_correct( v : vec3 ) -> vec3 {
-    vec3( f32::pow( v.x, 1.0/2.2 ),
-          f32::pow( v.y, 1.0/2.2 ),
-          f32::pow( v.z, 1.0/2.2 ))
+    vec3( v.x.pow( &(1.0/2.2) ),
+          v.y.pow( &(1.0/2.2) ),
+          v.z.pow( &(1.0/2.2) ))
 }
 
 struct TracetaskData {
