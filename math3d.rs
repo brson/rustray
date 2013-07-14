@@ -1,4 +1,4 @@
-use std::*;
+use std::f32::consts::pi;
 
 #[deriving(Eq,Clone)]
 pub struct vec3 {
@@ -97,7 +97,6 @@ impl Ray {
         let e2 = sub(t.p3,t.p1);
         let s1 = cross(self.dir,e2);
         let divisor = dot(s1,e1);
-
         if divisor == 0.0 {
             return None;
         }
@@ -160,7 +159,7 @@ pub struct aabb {
 #[inline(always)]
 pub fn cosine_hemisphere_sample( u: f32, v: f32 ) -> vec3 {
     let r_sqrt = u.sqrt();
-    let theta = 2f32 * f32::consts::pi * v;
+    let theta = 2f32 * pi * v;
     vec3( r_sqrt*theta.cos(), (1f32-u).sqrt(), r_sqrt*theta.sin() )
 }
 
@@ -207,5 +206,5 @@ pub fn intersection_test()
                     p2: vec3(1f32, -1f32, -1f32),
                     p3: vec3(0f32, 2f32, -1f32) };
 
-    assert!(option::is_some( &ray.intersect(&tri) ));
+    assert!(ray.intersect(&tri).is_some());
 }
