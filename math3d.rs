@@ -98,31 +98,33 @@ impl Ray {
         let s1 = cross(self.dir,e2);
         let divisor = dot(s1,e1);
 
-        if divisor == 0f32 {
-            return option::None;
+        if divisor == 0.0 {
+            return None;
         }
 
         // compute first barycentric coordinate
-        let inv_divisor = 1.0f32 / divisor;
+        let inv_divisor = 1.0 / divisor;
         let d = sub(self.origin,t.p1);
 
         let b1 = dot(d, s1) * inv_divisor;
-        if b1 < 0.0f32 || b1 > 1.0f32 {
-            return option::None;
+        if b1 < 0.0 || b1 > 1.0 {
+            return None;
         }
 
         // and second barycentric coordinate
         let s2 = cross(d,e1);
         let b2 = dot(self.dir,s2) * inv_divisor;
-        if b2 < 0.0f32 || b1+b2 > 1.0f32 {
-            return option::None; // outside triangle
+        
+        if b2 < 0.0 || b1+b2 > 1.0 {
+            return None; // outside triangle
         }
 
         let t = dot(e2,s2) * inv_divisor;
-        if t < 0.0f32 {
-            return option::None; // behind viewer
+        if t < 0.0 {
+            None // behind viewer
+        } else {
+            Some( HitResult{ barycentric: vec3(b1, b2, 1.0-b1-b2), t: t} )
         }
-        option::Some( HitResult{barycentric: vec3(b1, b2, 1.0f32-b1-b2), t: t} )
     }
     #[inline(always)]
     pub fn aabb_check(&self, max_dist: f32, box: aabb ) -> bool {
