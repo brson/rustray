@@ -150,7 +150,7 @@ fn trace_kd_tree(
     inmaxt: f32 )
     -> Option<(HitResult, uint)> {
 
-    let mut res : Option<(HitResult, uint)> = option::None;
+    let mut res : Option<(HitResult, uint)> = None;
     let mut closest_hit = inmaxt;
 
     let mut stack : ~[(uint, f32, f32)] = ~[];
@@ -181,12 +181,12 @@ fn trace_kd_tree(
                     let new_hit_result = r.intersect(t);
 
                     match (res, new_hit_result){
-                        (option::None(), option::Some(hr)) => {
-                            res = option::Some((hr,tri_index as uint));
+                        (None(), Some(hr)) => {
+                            res = Some((hr,tri_index as uint));
                             closest_hit = hr.t;
                         }
-                        (option::Some((hr1,_)), option::Some(hr2)) if hr1.t > hr2.t => {
-                            res = option::Some((hr2,tri_index as uint));
+                        (Some((hr1,_)), Some(hr2)) if hr1.t > hr2.t => {
+                            res = Some((hr2,tri_index as uint));
                             closest_hit = hr2.t;
                         }
                         _ => {}
@@ -310,7 +310,7 @@ fn trace_kd_tree_shadow(
 #[inline]
 fn trace_soup( polys: &model::polysoup, r: &Ray) -> Option<(HitResult, uint)>{
 
-    let mut res : Option<(HitResult, uint)> = option::None;
+    let mut res : Option<(HitResult, uint)> = None;
 
     for uint::range(0, polys.indices.len() / 3) |tri_ix| {
         let tri = &get_triangle( polys, tri_ix);
@@ -318,12 +318,12 @@ fn trace_soup( polys: &model::polysoup, r: &Ray) -> Option<(HitResult, uint)>{
         let new_hit = r.intersect(tri);
 
         match (res, new_hit) {
-            (option::None(),option::Some(hit)) => {
-                res = option::Some((hit, tri_ix));
+            (None(),Some(hit)) => {
+                res = Some((hit, tri_ix));
             }
-            (option::Some((old_hit,_)), option::Some(hit))
+            (Some((old_hit,_)), Some(hit))
                         if hit.t < old_hit.t && hit.t > 0.0 => {
-                res = option::Some((hit, tri_ix));
+                res = Some((hit, tri_ix));
             }
             _ => {}
         }
@@ -456,7 +456,7 @@ fn trace_checkerboard( checkerboard_height: f32, r : &Ray, mint: f32, maxt: f32)
             let (u,v) = ((pos.x*5.0).floor() as int, (pos.z*5.0).floor() as int);
             let is_white = (u + v) % 2 == 0;
             let color = if is_white { vec3(1.0,1.0,1.0) } else { vec3(1.0,0.5,0.5) };
-            let intersection = option::Some( intersection{
+            let intersection = Some( intersection{
                         pos: pos,
                         n: vec3(0.0,1.0,0.0),
                         n_face: vec3(0.0,1.0,0.0),
@@ -464,7 +464,7 @@ fn trace_checkerboard( checkerboard_height: f32, r : &Ray, mint: f32, maxt: f32)
                         reflectivity: if is_white {0.3} else {0.0} } );
             (intersection, checker_hit_t)
     } else {
-        (option::None, maxt)
+        (None, maxt)
     }
 }
 
@@ -492,7 +492,7 @@ fn trace_ray( r : &Ray, mesh : &model::mesh, mint: f32, maxt: f32) -> Option<int
     };
 
     match trace_result {
-        option::Some((hit_info, tri_ix)) if hit_info.t > 0.0 => {
+        Some((hit_info, tri_ix)) if hit_info.t > 0.0 => {
             let pos = add( r.origin, scale(r.dir, hit_info.t));
 
             let (i0,i1,i2) = (  mesh.polys.indices[tri_ix*3  ],
@@ -511,7 +511,7 @@ fn trace_ray( r : &Ray, mesh : &model::mesh, mint: f32, maxt: f32) -> Option<int
                                 mesh.polys.vertices[i2] );
             let n_face = normalized( cross(sub(v1,v0), sub(v2,v0)));
 
-            option::Some( intersection{
+            Some( intersection{
                     pos: pos,
                     n: n,
                     n_face: n_face,
@@ -556,7 +556,7 @@ fn get_color( r: &Ray, mesh: &model::mesh, lights: &[light], rnd: &rand_env, tmi
     }
     
     match trace_ray( r, mesh, tmin, tmax ) {
-        option::Some(intersection{pos,n,n_face,color,reflectivity}) => {
+        Some(intersection{pos,n,n_face,color,reflectivity}) => {
             let surface_origin = add(pos, scale(n_face, 0.000002));
 
             shade(pos, n, n_face, r, color, reflectivity, lights, rnd, depth,
