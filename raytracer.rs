@@ -181,7 +181,7 @@ fn trace_kd_tree(
                     let new_hit_result = r.intersect(t);
 
                     match (res, new_hit_result){
-                        (None(), Some(hr)) => {
+                        (None, Some(hr)) => {
                             res = Some((hr,tri_index as uint));
                             closest_hit = hr.t;
                         }
@@ -318,7 +318,7 @@ fn trace_soup( polys: &model::polysoup, r: &Ray) -> Option<(HitResult, uint)>{
         let new_hit = r.intersect(tri);
 
         match (res, new_hit) {
-            (None(),Some(hit)) => {
+            (None,Some(hit)) => {
                 res = Some((hit, tri_ix));
             }
             (Some((old_hit,_)), Some(hit))
