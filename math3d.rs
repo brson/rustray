@@ -141,10 +141,9 @@ impl Ray {
         let (miny, maxy) = (ty1.min(&ty2), ty1.max(&ty2));
         let (minz, maxz) = (tz1.min(&tz2), tz1.max(&tz2));
 
-        let tmin = minx.max(& miny.max(& minz ) );
-        let tmax = maxx.min(& maxy.min(& maxz ) );
-
-        tmax >= 0f32 && tmin <= tmax && tmin <= max_dist
+        let tmin = minx.max( &miny.max( &minz ) );
+        let tmax = maxx.min( &maxy.min( &maxz ) );
+        tmax >= 0.0 && tmin <= tmax && tmin <= max_dist
     }
 }
 
