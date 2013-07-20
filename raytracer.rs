@@ -332,6 +332,7 @@ fn trace_soup( polys: &model::polysoup, r: &Ray) -> Option<(HitResult, uint)>{
     return res;
 }
 
+#[deriving(Clone)]
 struct light {
     pos: vec3,
     strength: f32,
@@ -684,22 +685,18 @@ pub fn generate_raytraced_image_multi(
             height_start: uint::min( i * step_size, height),
             height_stop: uint::min( (i + 1) * step_size, height ),
             sample_coverage_inv: sample_coverage_inv,
-            lights: copy lights,
+            lights: lights.clone(),
             rnd: ~rnd.clone()
         };
         results.push(workers[i % num_tasks].calculate(ttd,tracetask));
     }
-//    println("Done distributing the work, let's evaluate!");
-    let mut result = ~[];
-    for results.consume_iter().advance |future| {
-        let mut future = future;
-        result.push_all( future.get() )
-    }
-    result
+    let mut fmap = results.consume_iter().flat_map_(|f| f.unwrap().consume_iter() );
+    fmap.collect()
 }
 
 extern {
-    fn rust_num_threads() -> libc::uintptr_t;   // A trick that should tell us the number of processors.
+    #[rust_stack]
+    fn rust_get_num_cpus() -> libc::uintptr_t;   // A trick that should tell us the number of processors.
 }
 
 pub fn generate_raytraced_image(
@@ -713,7 +710,7 @@ pub fn generate_raytraced_image(
     let lights = ~[  make_light(vec3(-3.0, 3.0, 0.0),10.0, 0.3, vec3(1.0,1.0,1.0)) ]; //,
                     //make_light(vec3(0f32, 0f32, 0f32), 10f32, 0.25f32, vec3(1f32,1f32,1.0f32))];
     let mut num_tasks = match NUM_THREADS {
-      0 => unsafe { rust_num_threads() as uint },
+      0 => unsafe { rust_get_num_cpus() as uint },
       n => n
     };
     if num_tasks > height { num_tasks = height };   // We evaluate complete rows, there is no point in having more tasks than there are rows.
