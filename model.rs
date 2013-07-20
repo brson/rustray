@@ -260,7 +260,7 @@ fn parse_faceindex(s: &str) ->  uint {
 
 fn read_polysoup(fname: &str) -> polysoup {
     use std::iterator::IteratorUtil;
-    let reader = result::get( &io::file_reader( &Path(fname) ) );
+    let reader = io::file_reader( &Path(fname) ).unwrap();
     let mut vertices = ~[];
     let mut indices = ~[];
 

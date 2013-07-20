@@ -7,9 +7,7 @@ use std::io::{Writer, WriterUtil};
 use extra;
 
 fn write_ppm( fname: &str, width: uint, height: uint, pixels: &[raytracer::Color] ){
-
-//    let writer = result::get( &io::file_writer( &Path(fname), [io::Create, io::Truncate] ) );
-    let writer = result::get( &io::buffered_file_writer( &Path(fname) ) );
+    let writer = io::buffered_file_writer( &Path(fname) ).unwrap();
     writer.write_str(fmt!("P6\n%u %u\n255\n", width, height));
     for pixels.iter().advance |pixel| {
         writer.write([pixel.r, pixel.g, pixel.b]);
