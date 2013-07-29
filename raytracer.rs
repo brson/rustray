@@ -584,7 +584,7 @@ fn gamma_correct( v : vec3 ) -> vec3 {
 }
 
 struct TracetaskData {
-	meshARC: extra::arc::ARC<model::mesh>,
+	meshArc: extra::arc::Arc<model::mesh>,
 	horizontalFOV: f32,
 	width: uint,
     height: uint,
@@ -599,11 +599,11 @@ struct TracetaskData {
 #[inline]
 fn tracetask(data: ~TracetaskData) -> ~[Color] {
     match data {
-        ~TracetaskData {meshARC: meshARC, horizontalFOV: horizontalFOV, width: width,
+        ~TracetaskData {meshArc: meshArc, horizontalFOV: horizontalFOV, width: width,
             height: height, sample_grid_size: sample_grid_size, height_start: height_start,
             height_stop: height_stop, sample_coverage_inv: sample_coverage_inv, lights: lights,
             rnd: rnd} => {
-                let mesh = meshARC.get();
+                let mesh = meshArc.get();
             	let mut img_pixels = vec::with_capacity(width);
             	for uint::range( height_start, height_stop ) |row| {
 	                for uint::range( 0, width ) |column| {
@@ -667,7 +667,7 @@ pub fn generate_raytraced_image_multi(
     num_tasks: uint) -> ~[Color]
 {
     io::print(fmt!("using %? tasks ... ", num_tasks));
-    let meshARC = extra::arc::ARC(mesh);
+    let meshArc = extra::arc::Arc::new(mesh);
     let rnd = get_rand_env();
     let mut workers = ~[];
     for num_tasks.times {
@@ -677,7 +677,7 @@ pub fn generate_raytraced_image_multi(
     let mut results = ~[];
     for uint::range(0,(height / step_size)+1) |i| {
         let ttd = ~TracetaskData {   // The data required to trace the rays.
-            meshARC: meshARC.clone(),
+            meshArc: meshArc.clone(),
             horizontalFOV: horizontalFOV,
             width: width,
             height: height,
