@@ -9,7 +9,7 @@ use extra;
 fn write_ppm( fname: &str, width: uint, height: uint, pixels: &[raytracer::Color] ){
     let writer = io::buffered_file_writer( &Path(fname) ).unwrap();
     writer.write_str(fmt!("P6\n%u %u\n255\n", width, height));
-    for pixels.iter().advance |pixel| {
+    for pixel in pixels.iter() {
         writer.write([pixel.r, pixel.g, pixel.b]);
     };
 }
