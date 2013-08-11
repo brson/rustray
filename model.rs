@@ -35,7 +35,7 @@ pub enum kd_tree_node {
 fn find_split_plane( distances: &[f32], indices: &[uint], faces: &[uint] ) -> f32 {
 
     let mut face_distances = vec::with_capacity( 3*faces.len() );
-    for faces.iter().advance |f| {
+    for f in faces.iter() {
         face_distances.push(distances[indices[*f*3u]]);
         face_distances.push(distances[indices[*f*3u+1u]]);
         face_distances.push(distances[indices[*f*3u+2u]]);
@@ -54,7 +54,7 @@ fn split_triangles( splitter: f32, distances: &[f32], indices: &[uint], faces: &
     let mut l = ~[];
     let mut r = ~[];
 
-    for faces.iter().advance |f| {
+    for f in faces.iter() {
         let f = *f;
         let d0 = distances[indices[f*3u   ]];
         let d1 = distances[indices[f*3u+1u]];
@@ -85,7 +85,7 @@ fn build_leaf(
     let next_face_ix : u32 = (new_indices.len() as u32) / 3u32;
     kd_tree_nodes.push(leaf( next_face_ix, (faces.len() as u32) ));
 
-    for faces.iter().advance |f| {
+    for f in faces.iter() {
         let f = *f;
         new_indices.push( indices[f*3]   );
         new_indices.push( indices[f*3+1] );
@@ -201,7 +201,7 @@ pub fn read_mesh(fname: &str) -> mesh {
     }
     let mut aabbmin = vec3(f32::infinity, f32::infinity, f32::infinity);
     let mut aabbmax = vec3(f32::neg_infinity, f32::neg_infinity, f32::neg_infinity);
-    for polys.vertices.iter().advance |v| {
+    for v in polys.vertices.iter() {
         aabbmin = min(*v, aabbmin);
         aabbmax = max(*v, aabbmax);
     }
@@ -212,7 +212,7 @@ pub fn read_mesh(fname: &str) -> mesh {
     let mut transformed_verts = ~[];
 
 
-    for polys.vertices.iter().advance |v| {
+    for v in polys.vertices.iter() {
         transformed_verts.push(scale(sub(*v, offset), downscale));
     }
 
@@ -224,7 +224,7 @@ pub fn read_mesh(fname: &str) -> mesh {
     let mut ydists = ~[];
     let mut zdists = ~[];
 
-    for transformed_verts.iter().advance |v| {
+    for v in transformed_verts.iter() {
         xdists.push(v.x);
         ydists.push(v.y);
         zdists.push(v.z);
@@ -255,7 +255,7 @@ fn parse_faceindex(s: &str) ->  uint {
         Some(slash_ix) => s.slice(0u, slash_ix),
         _ => s
     };
-    uint::from_str(ix_str).get()-1u
+    uint::from_str(ix_str).unwrap()-1u
 }
 
 fn read_polysoup(fname: &str) -> polysoup {
@@ -274,13 +274,13 @@ fn read_polysoup(fname: &str) -> polysoup {
 
         let mut num_texcoords = 0u;
         let mut tokens = ~[];
-        for line.split_iter(' ').advance |s| { tokens.push(s) };
+        for s in line.split_iter(' ') { tokens.push(s) };
 
         if tokens[0] == "v" {
             assert!(tokens.len() == 4u);
-            let v = vec3(   float::from_str(tokens[1]).get() as f32,
-                            float::from_str(tokens[2]).get() as f32,
-                            float::from_str(tokens[3]).get() as f32);
+            let v = vec3(   float::from_str(tokens[1]).unwrap() as f32,
+                            float::from_str(tokens[2]).unwrap() as f32,
+                            float::from_str(tokens[3]).unwrap() as f32);
             assert!(v.x != f32::NaN);
             assert!(v.y != f32::NaN);
             assert!(v.z != f32::NaN);
@@ -310,7 +310,7 @@ fn read_polysoup(fname: &str) -> polysoup {
                     face_triangles.push((i0,i2,i3));
                 }
 
-                for face_triangles.iter().advance |t| {
+                for t in face_triangles.iter() {
                     let (i0,i1,i2) = *t;
                     indices.push(i0);
                     indices.push(i1);
