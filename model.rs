@@ -28,8 +28,8 @@ pub struct kd_tree {
 }
 
 pub enum kd_tree_node {
-    pub leaf( u32, u32 ),
-    pub node( axis, f32, u32 )
+    leaf( u32, u32 ),
+    node( axis, f32, u32 )
 }
 
 fn find_split_plane( distances: &[f32], indices: &[uint], faces: &[uint] ) -> f32 {
@@ -259,7 +259,6 @@ fn parse_faceindex(s: &str) ->  uint {
 }
 
 fn read_polysoup(fname: &str) -> polysoup {
-    use std::iterator::IteratorUtil;
     let reader = io::file_reader( &Path(fname) ).unwrap();
     let mut vertices = ~[];
     let mut indices = ~[];

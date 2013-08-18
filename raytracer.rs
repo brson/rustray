@@ -690,7 +690,7 @@ pub fn generate_raytraced_image_multi(
         };
         results.push(workers[i % num_tasks].calculate(ttd,tracetask));
     }
-    let mut fmap = results.consume_iter().flat_map_(|f| f.unwrap().consume_iter() );
+    let mut fmap = results.move_iter().flat_map(|f| f.unwrap().move_iter() );
     fmap.collect()
 }
 
