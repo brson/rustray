@@ -1,5 +1,5 @@
 #[link(name = "rustray",
-       vers = "0.1",
+       vers = "0.7",
        uuid = "c89c5834-63db-4a6e-8e0a-d75985b1730e",
        url = "https://github.com/brson/rustray")];
 
@@ -8,10 +8,11 @@
 #[license = "Unknown"];
 #[crate_type = "bin"];
 
-extern mod std;
+extern mod extra;
 
-mod main;
-mod model;
-mod raytracer;
-mod math3d;
-mod consts;
+pub mod consts;
+pub mod main;
+pub mod math3d;
+pub mod model;
+pub mod raytracer;
+pub mod concurrent;

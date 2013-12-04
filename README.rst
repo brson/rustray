@@ -1,20 +1,22 @@
 Rustray
 =======
 
-October 2012
+May 2013
 
 A raytracing proof-of-concept in Rust
 
 Requirements
 ------------
 
-- Rust-0.4
+- Rust-0.6 (incoming)
 
 Compiling
 ---------
 ::
 
    $ rustc rustray.rc
+
+It's usually worth compiling with '--opt-level 3'.
 
 Quality Settings
 ----------------
@@ -30,11 +32,11 @@ simple model or adjust quality settings.
 
    $ wget http://groups.csail.mit.edu/graphics/classes/6.837/F03/models/cow-nonormals.obj
    $ ./rustray cow-nonormals.obj
-   Reading "cow-nonormals.obj"...
-   Building kd-tree... Done.
-   Loaded model.
-       Verts: 4583, Tris: 5804
-       KD-tree depth: 13, #nodes: 1905
-   Tracing rays... Done!
-   Writing "./oput.ppm"...Done!
-   $ gimp oput.ppm
+    Reading "cow-nonormals.obj"...
+    Reading model file...Building kd-tree... Done.
+    Loaded model.
+	    Verts: 4583, Tris: 25811
+	    KD-tree depth: 14, #nodes: 3341
+    Tracing rays... using 4 tasks ... Done!
+    Writing "./oput.ppm"...Done!
+    Total time: 16.149s, of which tracing: 11.161
